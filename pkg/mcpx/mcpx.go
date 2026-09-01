@@ -1,11 +1,9 @@
-// The MCP server's identity and its tool list, in one place.
+// The MCP server's identity and tool list, in one place.
 //
-// Two documents now describe the same server: the initialize result the server
-// itself returns, and the server card at /.well-known/mcp/server-card.json,
-// whose entire purpose is to tell a client what it would have got from
-// initialize without paying for the handshake. A card that disagrees with the
-// server is worse than no card, because a client that trusted it would connect
-// expecting something else — so neither is written by hand.
+// Two documents describe the same server: the initialize result, and the server
+// card that exists to give a client that same answer without the handshake.
+// Neither is written by hand, because a card that disagrees with its server is
+// worse than no card.
 package mcpx
 
 import (
@@ -31,10 +29,8 @@ const Instructions = "Live domain and network diagnostics. Every call is a fresh
 	"If a result mentions a degraded upstream, part of the answer is missing and the " +
 	"rest still stands."
 
-// Capabilities is what the server declares it can do. Tools and nothing else:
-// there are no prompts, no resources, and no subscriptions, and listChanged is
-// absent because the set is fixed at build time and never changes under a
-// connected client.
+// Capabilities is what the server declares. Tools and nothing else, and no
+// listChanged: the set is fixed at build time.
 func Capabilities() map[string]any {
 	return map[string]any{"tools": map[string]any{}}
 }
@@ -50,12 +46,9 @@ func SpecFor(name string) (commands.Spec, bool) {
 	return commands.ByName(strings.ToUpper(strings.TrimPrefix(name, "dug_")))
 }
 
-// Tools is the MCP tool list, one tool per command.
-//
-// The same value serves tools/list and the static `tools` array in the server
-// card, which SEP-1649 defines as "a static list following the Tool interface".
-// Being literally the same list is the point: a client that validated a tool
-// description from the card is validating what it will actually be offered.
+// Tools is the MCP tool list, one tool per command. The same value serves
+// tools/list and the server card's static `tools` array, so a client that
+// validated a description from the card validated what it will be offered.
 func Tools() []any {
 	tools := make([]any, 0, len(commands.List))
 	for _, spec := range commands.List {

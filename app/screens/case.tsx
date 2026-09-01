@@ -1,21 +1,14 @@
 "use client"
 
 // A case file: several screens held under the one question that produced them.
-//
-// Without this an investigation is four unrelated screens in reverse order, and
-// the person reading them has to remember that they belong together and that
-// the last one is the first thing that ran. The header is not decoration; it is
-// the difference between evidence and a pile.
+// The header is what separates evidence from a pile of unrelated answers.
 
 import { Screen } from "@/app/screens/screen"
 import type { Payload } from "@/lib/cache"
 import { cn } from "@/lib/utils"
 
-// Indexed by position in the plan, not appended in completion order.
-//
-// Appending meant a step that did not run left no gap: the fourth command's
-// result landed in the third slot, so a plan with one bad command in it
-// reported the wrong command as broken and the one after it as still running.
+// Indexed by position in the plan. A step that does not run still occupies its
+// slot, so one bad command cannot shift the results after it.
 export type CaseStep =
   | { state: "done"; id: number; label: string; payload: Payload }
   | { state: "failed" }

@@ -87,7 +87,7 @@ func run(r *http.Request, result *screen.Result, name string) {
 
 	result.Add("GraphCheck", screen.CheckProps{
 		Title: "crawler signals",
-		Items: checkItems(signals, map[string]string{
+		Items: screen.Checks(crawlerSignals, signals, map[string]string{
 			"title":           trim(page.Title, 60),
 			"description":     trim(page.Description, 60),
 			"canonical":       page.Canonical,
@@ -161,22 +161,9 @@ func run(r *http.Request, result *screen.Result, name string) {
 		"model of the whole web, and any number this printed for it would be invented.")
 }
 
-func checkItems(signals map[string]bool, notes map[string]string) []screen.CheckItem {
-	// Fixed order: a map walks differently every request, and a screen that
-	// reorders itself between two identical queries reads as unstable.
-	order := []string{
-		"title", "description", "canonical", "one h1", "lang",
-		"robots.txt", "sitemap.xml", "open graph", "twitter card", "structured data",
-	}
-	items := make([]screen.CheckItem, 0, len(order))
-	for _, label := range order {
-		note := notes[label]
-		if !signals[label] {
-			note = "absent"
-		}
-		items = append(items, screen.CheckItem{Label: label, Done: signals[label], Note: note})
-	}
-	return items
+var crawlerSignals = []string{
+	"title", "description", "canonical", "one h1", "lang",
+	"robots.txt", "sitemap.xml", "open graph", "twitter card", "structured data",
 }
 
 func status(probe pagex.Probe) string {

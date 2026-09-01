@@ -1,17 +1,12 @@
-// WEBMCP. Whether a site has wired itself up for agents that arrive inside the
-// browser, and whether it also answers ones that do not.
+// WEBMCP. Whether a site is wired for agents that arrive inside the browser,
+// and whether it also answers ones that do not.
 //
-// One thing this command cannot do, said plainly because the whole screen is
-// built around it: WebMCP tools are registered when the page runs, by
-// javascript, against document.modelContext. Nothing fetched from outside a
-// browser can see them. A tool list is not a file on a server.
-//
-// So this reports the evidence that is observable without executing anything —
-// the header native WebMCP requires, the api named in the scripts the page
-// loads, the marker in the served html, and the remote MCP surface for an agent
-// that is somewhere else — and says which of those is proof and which is only a
-// strong hint. A checker that printed "12 tools found" from a curl would be
-// making it up.
+// What this cannot do, since the screen is built around it: tools register when
+// the page runs, so nothing fetched from outside a browser can see them. A tool
+// list is not a file on a server. What is left is observable evidence — the
+// header native WebMCP requires, the api named in the scripts the page loads,
+// and the remote MCP surface — and the screen says which of that is proof and
+// which is a hint. A checker printing "12 tools found" from a curl invented it.
 package handler
 
 import (
@@ -27,31 +22,25 @@ import (
 	"github.com/zaidmukaddam/dug/pkg/screen"
 )
 
-// How many of the page's scripts to read looking for the api.
-//
-// The first version stopped at six, in document order, on the theory that a
-// bundle mentioning modelContext mentions it early. It does not: dug's own page
-// keeps it in a chunk that loads fourteenth, so this command reported "not
-// referenced" about the one site it was written on. Bundlers decide chunk
-// order, and nothing about that order tracks what a chunk contains.
-//
-// So the ceiling is high enough to cover an ordinary app and the reads happen
-// together rather than one after another. Whatever it does not reach is named
-// on the screen, because an unread script is a thing this did not look at
-// rather than a thing that is not there.
-const maxScripts = 24
+const (
+	// Nothing about bundle order tracks what a chunk contains, so a low ceiling
+	// misses the one that matters. Whatever this does not reach is named on the
+	// screen: an unread script is not an absent marker.
+	maxScripts = 24
 
-// How many script fetches to have in flight at once. Enough that a page of two
-// dozen chunks is one round trip rather than two dozen, small enough not to
-// open a connection per chunk against someone else's origin.
-const scriptWorkers = 8
+	// Enough that two dozen chunks are one round trip, few enough not to open a
+	// connection per chunk against someone else's origin.
+	scriptWorkers = 8
 
-// How much of one script to read. The default ceiling in httpx is 256KB, which
-// is right for anything meant to be read and wrong here: dug's own bundle is
-// 790KB and mentions modelContext 300KB past that cut, so this command reported
-// that dug does not reference the api it registers 26 tools with. A marker not
-// found in a truncated file is not a marker that is absent.
-const scriptBudget = 4 << 20
+	// Bundles are routinely megabytes and httpx caps bodies at 256KB, which
+	// would cut the file off before the marker.
+	scriptBudget = 4 << 20
+)
+
+var webmcpSignals = []string{
+	"origin-agent-cluster", "api in the page",
+	"remote mcp endpoint", "server card", "server manifest",
+}
 
 // The strings that survive minification, because they are property names on an
 // object the minifier cannot rename: the page has to spell document.modelContext
@@ -172,7 +161,7 @@ func run(r *http.Request, result *screen.Result, name string) {
 
 	result.Add("GraphCheck", screen.CheckProps{
 		Title: "webmcp signals",
-		Items: checkItems(signals, map[string]string{
+		Items: screen.Checks(webmcpSignals, signals, map[string]string{
 			"origin-agent-cluster": orNone(isolation) + ", required by native webmcp",
 			"api in the page":      whereFound(inHTML, inScripts),
 			"remote mcp endpoint":  remote.note,
@@ -339,22 +328,6 @@ func whereFound(inHTML, inScripts bool) string {
 	default:
 		return "not referenced"
 	}
-}
-
-func checkItems(signals map[string]bool, notes map[string]string) []screen.CheckItem {
-	// Fixed order. Ranging a map would reorder the screen between two
-	// identical requests.
-	order := []string{
-		"origin-agent-cluster", "api in the page",
-		"remote mcp endpoint", "server card", "server manifest",
-	}
-	items := make([]screen.CheckItem, 0, len(order))
-	for _, label := range order {
-		items = append(items, screen.CheckItem{
-			Label: label, Done: signals[label], Note: notes[label],
-		})
-	}
-	return items
 }
 
 func probeRow(probe pagex.Probe) string {

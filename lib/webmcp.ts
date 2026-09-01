@@ -2,31 +2,23 @@
 
 // WebMCP: the same commands, offered to an agent running inside the page.
 //
-// The remote MCP server at /api/mcp answers an agent that is somewhere else.
-// This is for one already here, in the user's browser, and the difference is
-// that a call lands on the page: every tool runs the ordinary command path, so
-// the answer appears on screen where the person can see what was asked and
-// read the evidence themselves.
+// /api/mcp answers an agent that is somewhere else. This is for one already
+// here, and the difference is that a call lands on the page: every tool runs
+// the ordinary command path, so the answer appears on screen where the person
+// can read the evidence themselves.
 //
-// The API this targets has moved twice, and this file was written against the
-// first shape. What is current, and what was here before:
+// The API has moved twice, so the three details that matter:
 //
-//   entry point   document.modelContext, not navigator.modelContext, which is
-//                 the deprecated alias as of Chrome 150
-//   registration  registerTool(tool, { signal }), one at a time. The old
-//                 provideContext({ tools }) declared the whole list at once and
-//                 has been removed from the spec: on a page where two scripts
-//                 register tools, replace-all is takeover
-//   removal       abort the AbortSignal given at registration, not
-//                 unregisterTool
+//   entry point   document.modelContext. navigator.modelContext is a deprecated
+//                 alias as of Chrome 150 and may be absent
+//   registration  registerTool(tool, { signal }), one at a time. provideContext
+//                 declared the whole list at once and was removed — on a page
+//                 where two scripts register tools, replace-all is takeover
+//   removal       abort the signal given at registration
 //
-// So the previous version of this file registered nothing anywhere, and said so
-// nowhere. @mcp-b/global installs the API where the browser has not shipped it
-// and wraps the native one where it has, which is what makes this work today
-// rather than only on Chrome 149+ behind a flag.
-//
-// Native WebMCP additionally needs an origin-isolated document, which is why
-// next.config sends Origin-Agent-Cluster: ?1.
+// @mcp-b/global installs the API where the browser has not shipped it and wraps
+// the native one where it has. Native additionally needs an origin-isolated
+// document, which is why next.config sends Origin-Agent-Cluster: ?1.
 
 import "@mcp-b/global"
 
@@ -259,13 +251,9 @@ export function useWebMcp(
     }
 
     // The one tool with no counterpart on the remote server, because it is the
-    // one whose output is the page.
-    //
-    // /mcp could run the same four lookups and hand back four payloads, and an
-    // agent there could already do that by calling four tools. What it cannot
-    // do is leave them on a screen, in order, under the question that produced
-    // them, for the person who asked. That is the whole difference, and it is
-    // why this is registered here and not in the Go registry.
+    // one whose output is the page. /mcp could run the same lookups and return
+    // the same payloads; it cannot leave them on a screen for the person who
+    // asked, which is the only thing an investigation adds.
     tools.push({
       name: "dug_investigate",
       description:
@@ -363,11 +351,6 @@ export function useWebMcp(
       },
     })
 
-    // provideContext replaces the whole set in one call, so it cannot collide
-    // with a set this page already registered. registerTool can, and does: an
-    // effect that runs twice, or a name left behind by a previous mount, throws
-    // "Duplicate tool name". Prefer the atomic call and keep the per-tool loop
-    // only for an implementation that lacks it.
     // One controller for the whole set. Aborting it on unmount removes every
     // tool, which is also what keeps a second mount from colliding: the old
     // registration is gone before the new one runs, rather than being cleared
@@ -378,26 +361,11 @@ export function useWebMcp(
       attempt(() => context.registerTool(tool, { signal: controller.signal }))
     )
 
-    // The mark is taken from what is registered afterwards, not from whether
-    // each call resolved, and it must not wait on those calls to find out.
-    //
-    // Two separate things went wrong here, and both produced the same symptom —
-    // a page carrying its whole tool set and no marker to say so:
-    //
-    //   - Judging by the individual calls. React mounts an effect twice in
-    //     development and abort races the registrations already in flight, so
-    //     the second pass reports "Tool already registered" for tools that are
-    //     present and working.
-    //   - Waiting on all of them. In a production build at least one
-    //     registerTool promise never settles, so Promise.all never resolved and
-    //     the check simply never ran. Development did not show it: the abort
-    //     between React's two passes rejected the pending calls, which is the
-    //     only reason it ever completed there.
-    //
-    // So this polls getTools instead. It is the only thing that answers the
-    // question an agent is actually asking, it answers as soon as the tools are
-    // up rather than when the last promise decides to settle, and it cannot
-    // hang.
+    // Poll getTools rather than judging by the registration calls, for two
+    // reasons that both leave a fully working page reporting no tools:
+    // React's second mount pass aborts calls that already succeeded, and at
+    // least one registerTool promise never settles in a production build, so
+    // anything awaiting them all waits forever.
     void (async () => {
       const deadline = Date.now() + SETTLE_BUDGET_MS
 

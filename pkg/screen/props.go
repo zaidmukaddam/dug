@@ -31,6 +31,26 @@ type CheckProps struct {
 	Items []CheckItem `json:"items"`
 }
 
+// Checks builds a check list in the order given.
+//
+// The order is a parameter rather than the map's own, because ranging a map
+// walks differently every time and a screen that reorders itself between two
+// identical queries reads as unstable.
+//
+// A failing row keeps its note when it has one. "http 404" says more than
+// "absent", and the word is only worth printing where there is nothing better.
+func Checks(order []string, done map[string]bool, notes map[string]string) []CheckItem {
+	items := make([]CheckItem, 0, len(order))
+	for _, label := range order {
+		note := notes[label]
+		if note == "" && !done[label] {
+			note = "absent"
+		}
+		items = append(items, CheckItem{Label: label, Done: done[label], Note: note})
+	}
+	return items
+}
+
 type TableProps struct {
 	Title   string     `json:"title"`
 	Headers []string   `json:"headers"`

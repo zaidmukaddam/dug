@@ -1,24 +1,14 @@
-// The MCP server card, served at /.well-known/mcp/server-card.json.
+// The MCP server card, SEP-1649, served at /.well-known/mcp/server-card.json.
 //
-// SEP-1649. What a client would have learned from initialize plus tools/list,
-// without the handshake: the protocol version, the transport and its endpoint,
-// the capabilities, whether authentication is needed, and the full static tool
-// list. A client can decide whether this server is worth connecting to, and
-// validate every tool description against its own classifiers, before it opens
-// a single connection.
+// What a client would have learned from initialize plus tools/list, without the
+// handshake, so it can decide whether to connect and validate every tool
+// description before it does. Fields come from pkg/mcpx, the same source
+// api/mcp answers from: a card that disagrees with its server is worse than no
+// card.
 //
-// Every field here comes from pkg/mcpx, which is the same source api/mcp
-// answers initialize and tools/list from. That is the whole design constraint:
-// a card that disagrees with its server is worse than no card, because a client
-// that trusted it connects expecting something else.
-//
-// One deliberate departure. The SEP lists `$schema` as required and points it
-// at https://static.modelcontextprotocol.io/schemas/mcp-server-card/v1.json,
-// which does not resolve — the proposal was closed without the schema ever
-// being published. Every other server card in the wild cites a 404 as a result.
-// Omitting the field is the smaller problem: a broken pointer tells a validator
-// to fetch something that is not there, while its absence costs a reader
-// nothing they could have used. Everything else follows the SEP exactly.
+// No $schema, which the SEP marks required. The url it names has never been
+// published, so every card in the wild cites a 404; a broken pointer is worse
+// than an absent one. The rest follows the SEP.
 package handler
 
 import (
@@ -32,8 +22,8 @@ import (
 type object = map[string]any
 
 func Handler(w http.ResponseWriter, r *http.Request) {
-	// The SEP requires CORS on the discovery endpoint, because a browser-based
-	// client reading a card cross-origin is the case it is for.
+	// Required by the SEP: a browser client reading a card cross-origin is the
+	// case it exists for.
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
@@ -62,18 +52,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			"endpoint": "/mcp",
 		},
 		"capabilities": mcpx.Capabilities(),
-		// Stated rather than omitted. "No authentication" is a fact a client
-		// wants before connecting, and an absent field only says nobody wrote
-		// one down.
+		// Stated rather than omitted: "none needed" is a fact a client wants
+		// before connecting, and an absent field only says nobody wrote one down.
 		"authentication": object{
 			"required": false,
 			"schemes":  []any{},
 		},
 		"instructions": mcpx.Instructions,
-		// A static list rather than the reserved string "dynamic": the set is
-		// fixed at build time and cannot change under a connected client, so
-		// making a client spend a tools/list round trip to learn it would be
-		// the exact cost this document exists to remove.
+		// Static rather than the reserved string "dynamic": the set is fixed at
+		// build time, so charging a client a tools/list round trip to learn it
+		// would be the cost this document exists to remove.
 		"tools": mcpx.Tools(),
 	}
 

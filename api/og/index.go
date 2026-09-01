@@ -115,7 +115,7 @@ func run(r *http.Request, result *screen.Result, name string) {
 
 	result.Add("GraphCheck", screen.CheckProps{
 		Title: "card signals",
-		Items: checkItems(signals, map[string]string{
+		Items: screen.Checks(cardSignals, signals, map[string]string{
 			"og:title":       trim(og["title"], 60),
 			"og:type":        og["type"],
 			"og:image":       trim(rawImage, 60),
@@ -197,26 +197,9 @@ func run(r *http.Request, result *screen.Result, name string) {
 		"is why they are reported as measurements and not as failures.")
 }
 
-func checkItems(signals map[string]bool, notes map[string]string) []screen.CheckItem {
-	// Fixed order: a map walks differently every request, and a screen that
-	// reorders itself between two identical queries reads as unstable.
-	order := []string{
-		"og:title", "og:type", "og:image", "og:url",
-		"image loads", "image absolute", "image size ok", "image shape ok", "twitter card",
-	}
-	items := make([]screen.CheckItem, 0, len(order))
-	for _, label := range order {
-		note := notes[label]
-		if !signals[label] {
-			note = "absent"
-			// A failure with a reason is worth more than the word absent.
-			if label == "image loads" && notes[label] != "" {
-				note = notes[label]
-			}
-		}
-		items = append(items, screen.CheckItem{Label: label, Done: signals[label], Note: note})
-	}
-	return items
+var cardSignals = []string{
+	"og:title", "og:type", "og:image", "og:url",
+	"image loads", "image absolute", "image size ok", "image shape ok", "twitter card",
 }
 
 // withinCardRatio accepts the band the platforms actually render without

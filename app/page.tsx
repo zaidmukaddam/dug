@@ -26,10 +26,9 @@ import { useWebMcp } from "@/lib/webmcp"
 
 // One answer, or one question that took several.
 //
-// A case is not a list of answers with a title on it: it is created before its
-// first lookup returns and filled in as they arrive, so the person watches the
-// evidence assemble rather than waiting on a spinner and then being handed a
-// finished page.
+// A case is created before its first lookup returns and filled in as they
+// arrive, so the person watches the evidence assemble rather than waiting on a
+// spinner and being handed a finished page.
 type Entry =
   | { kind: "screen"; id: number; label: string; payload: Payload }
   | {
@@ -86,8 +85,6 @@ export default function Page() {
   }, [])
 
   // A lookup landing in its own slot inside an open case rather than beside it.
-  // Indexed by position in the plan: appending put a result in the slot of a
-  // step that had failed, so one bad command mislabelled every step after it.
   const pushInto = useCallback((slot: Slot, step: CaseStep) => {
     setEntries((current) =>
       current.map((entry) => {
@@ -102,11 +99,10 @@ export default function Page() {
   }, [])
 
   // One path for every caller. A WebMCP tool call runs this too, so an agent
-  // and a person get the same parse, the same cache and the same screen, and
-  // whatever the agent asked for is left on the page for the person to read.
+  // and a person get the same parse, the same cache and the same screen.
   //
   // `into` is the open case a result belongs to. It also suppresses the running
-  // status, because a case draws its own progress and the shared skeleton would
+  // status: a case draws its own progress, and the shared skeleton would
   // otherwise flash between every step.
   const run = useCallback(
     async (text: string, into?: Slot): Promise<Payload | null> => {
@@ -177,10 +173,9 @@ export default function Page() {
 
   // One question, several lookups, one case file.
   //
-  // The steps run in sequence rather than in parallel on purpose. Each one
-  // appears as it lands, so a person sees the case being built and can start
-  // reading the first screen while the fourth is still in flight — which is the
-  // whole reason this renders onto a page instead of returning a summary.
+  // Sequential rather than parallel on purpose: each screen appears as it
+  // lands, so the first is readable while the fourth is still in flight. That
+  // is the reason this renders onto a page instead of returning a summary.
   const investigate = useCallback(
     async (question: string, target: string, planned: string[]) => {
       nextId.current += 1
@@ -308,20 +303,12 @@ export default function Page() {
           </p>
         ) : null}
 
-      {/* The landing and the skeleton are the same slot: at most one is ever on
-          screen. The skeleton still animates out, because it is replaced by the
-          answer it was standing in for and a cut there is jarring.
+      {/* The landing and the skeleton share this slot; at most one is on screen.
 
-          The landing does not, and used to. Its exit stranded it: motion's
-          popLayout takes the leaving element out of flow, and when the exit
-          never completes — which it reliably does not in development, and
-          eventually but not promptly in production — the landing sits at
-          position absolute and full opacity on top of the answer underneath it.
-          An investigation made it obvious, because a case file is tall and the
-          overlap is the whole screen, but it was already happening to every
-          query. A 160ms fade is not worth a landing page printed over the
-          evidence, so this unmounts instead: no exit, no overlap window at
-          all. */}
+          Only the skeleton animates out, because it is replaced by the answer it
+          stood in for. The landing must not: popLayout takes a leaving element
+          out of flow, and an exit that does not complete leaves the landing at
+          position absolute and full opacity over the answer underneath. */}
         <div className="relative">
           <AnimatePresence mode="popLayout" initial={false}>
             {status === "running" ? (
@@ -410,22 +397,15 @@ const SAMPLE: Record<string, string> = {
   agents: "vercel.com",
 }
 
-// The landing is built out of the same dashed frames an answer is built out of,
-// so the first thing on screen is already an example of what the tool puts
-// there. It used to be a bare description list, which is why it read as the
-// manual for a product rather than as the product.
+// Built out of the same dashed frames an answer is, so the first thing on
+// screen is already an example of what the tool puts there.
 //
-// The verbs carry no summary next to them. Twenty-one descriptions at one size
-// is the flat grey wall this was, and the arithmetic does not work either: the
-// longest is 48 characters, which needs about 420px beside a verb, and two of
-// those do not fit inside a frame at this width without wrapping. They are one
-// hover away instead, on the reserved line under the grid, and still written
-// out in full by HELP and by /about.
-// The grid does not use items-start, unlike an answer screen. There are three
-// frames here rather than a dozen graphs, and at that count a short frame beside
-// a tall one just reads as broken. Stretching is only the backstop though: the
-// commands frame is laid out two families wide so its natural height already
-// lands close to the column beside it.
+// The verbs carry no summary beside them: the longest needs about 420px, which
+// does not fit two-up at this width. They are one hover away on the reserved
+// line under the grid, and written out in full by HELP and /about.
+//
+// No items-start, unlike an answer screen — with three frames rather than a
+// dozen, a short one beside a tall one reads as broken.
 function Landing({
   onPick,
   onInvestigate,
@@ -474,8 +454,8 @@ function Landing({
 
           <p className="max-w-3xl text-xs text-pretty text-graph-muted">
             One question, several lookups, every screen kept under the question that produced it.
-            Click one to watch a case build against the domain named beneath it — or ask an agent
-            in the page, which can point the same investigation at yours.
+            Click one to watch the case build against the domain beneath it. An agent in the page
+            can run the same thing against yours, and pick the lookups itself.
           </p>
         </div>
       </Frame>
@@ -499,12 +479,9 @@ function Landing({
                     className="-mx-1.5 rounded px-1.5 py-0.5 text-left hover:bg-muted hover:text-graph-accent"
                   >
                     {spec.name.toLowerCase()}
-                    {/* The summary belongs in the document, not only in hover
-                        state. A screen reader announced these buttons as one
-                        bare verb with no hint of what it does, and a client
-                        that does not run javascript never saw the summaries at
-                        all — twenty-one of them, which is most of what this
-                        page actually says. Same text the hover line shows. */}
+                    {/* In the document, not only in hover state: otherwise a
+                        screen reader gets a bare verb, and a client running no
+                        javascript never sees the summaries at all. */}
                     <span className="sr-only">: {spec.summary}</span>
                   </button>
                 ))}
@@ -528,12 +505,7 @@ function Landing({
       </Frame>
 
       <div className="flex flex-col gap-6">
-        {/* "start here" used to sit above this with four single commands in it.
-            The investigations frame is a better version of the same idea — a
-            question rather than a verb — so keeping both was two answers to
-            "what do I do first".
-
-            The list is a constant in the codebase, not something a query can
+        {/* The list is a constant in the codebase, not something a query can
             point somewhere else, so naming it here is a fact about the tool
             rather than a boast about it.
 

@@ -95,7 +95,7 @@ func run(r *http.Request, result *screen.Result, name string) {
 
 	result.Add("GraphCheck", screen.CheckProps{
 		Title: "agent signals",
-		Items: checkItems(signals, map[string]string{
+		Items: screen.Checks(agentSignals, signals, map[string]string{
 			"content without js": itoa(page.TextChars) + " characters, threshold " + itoa(readableChars),
 			"structured data":    strings.Join(page.JSONLDType, ", "),
 			"one h1":             quoted(page.FirstH1),
@@ -162,22 +162,9 @@ func run(r *http.Request, result *screen.Result, name string) {
 		"and that gap is the finding rather than a fault in the measurement.")
 }
 
-func checkItems(signals map[string]bool, notes map[string]string) []screen.CheckItem {
-	// Fixed order: a map walks differently every request, and a screen that
-	// reorders itself between two identical queries reads as unstable.
-	order := []string{
-		"content without js", "structured data", "one h1", "description",
-		"sitemap.xml", "llms.txt", "markdown", "openapi", "api catalog",
-	}
-	items := make([]screen.CheckItem, 0, len(order))
-	for _, label := range order {
-		note := notes[label]
-		if !signals[label] {
-			note = "absent"
-		}
-		items = append(items, screen.CheckItem{Label: label, Done: signals[label], Note: note})
-	}
-	return items
+var agentSignals = []string{
+	"content without js", "structured data", "one h1", "description",
+	"sitemap.xml", "llms.txt", "markdown", "openapi", "api catalog",
 }
 
 // varySafe is the half of markdown negotiation that is easy to miss: without
