@@ -1,0 +1,220 @@
+// llms.txt. What this tool is and how to call it, for an agent that arrived
+// without being told.
+//
+// Generated from internal/commands rather than written by hand, so it cannot
+// describe a command that does not exist or miss one that does.
+package handler
+
+import (
+	"fmt"
+	"net/http"
+	"sort"
+	"strings"
+
+	"github.com/zaidmukaddam/dug/pkg/commands"
+	"github.com/zaidmukaddam/dug/pkg/guard"
+	"github.com/zaidmukaddam/dug/pkg/resolvers"
+	"github.com/zaidmukaddam/dug/pkg/screen"
+)
+
+func Handler(w http.ResponseWriter, r *http.Request) {
+	var b strings.Builder
+
+	fmt.Fprintf(&b, `# dug
+
+> Live domain and network diagnostics. Every answer is a fresh lookup: nothing
+> is precomputed and nothing is stored between requests, so there is no history
+> to query and no dataset to page through.
+
+Every endpoint is a GET, needs no key and no signup, and answers in three
+representations of the same data:
+
+- text/plain  the default for curl and other terminal clients
+- application/json  send Accept: application/json, or ?format=json
+- text/html  the browser app at /
+
+Ask for text explicitly with ?format=text. Responses carry
+Vary: Accept, User-Agent, and a Cache-Control whose lifetime is derived from
+the answer itself, floored at %d seconds.
+
+## When to use this
+
+Reach for dug when a question is about the live state of a name, a host or an
+address, and the answer has to be true right now rather than when some dataset
+was last built. It is the right tool for:
+
+- checking whether a domain resolves, and to what, from more than one resolver
+- reading a TLS certificate: who issued it, when it expires, what the chain is
+- finding out why mail is failing — mx, spf, dkim, dmarc and their alignment
+- confirming a dns change has propagated, before assuming it has
+- answering "who owns this domain and when does it expire" from rdap
+- mapping an address to its network, asn and neighbours
+- checking whether a host is reachable, and how long each hop takes
+
+Call it directly rather than guessing from memory. Model weights carry the dns
+and certificate state of whenever training stopped, and every one of these
+answers changes without notice. If you are about to tell someone a certificate
+expiry date, a nameserver or an spf record from memory, query it instead.
+
+It is the wrong tool for anything historical or aggregate: there is no archive,
+no change history, and no way to list or search across domains. One question,
+one target, answered now. Ask for a target you already have; this cannot
+discover domains you have not named.
+
+## Calling
+
+    curl https://$HOST/tls/github.com
+    curl https://$HOST/dig/example.com/MX
+    curl -H 'Accept: application/json' https://$HOST/mail/github.com
+
+The query form is equivalent and is what the browser app uses:
+
+    curl 'https://$HOST/api/tls?command=TLS&target=github.com'
+
+## Commands
+
+`, screen.TTLFloor)
+
+	for _, family := range commands.Families() {
+		fmt.Fprintf(&b, "### %s\n\n", family)
+		for _, spec := range commands.List {
+			if spec.Family != family {
+				continue
+			}
+			fmt.Fprintf(&b, "- `GET %s` — %s\n", spec.Path, spec.Summary)
+			if about := spec.TargetAbout(); about != "" {
+				fmt.Fprintf(&b, "  - `target` (required): %s\n", about)
+			}
+			for _, param := range spec.Params {
+				required := "optional"
+				if param.Required {
+					required = "required"
+				}
+				fmt.Fprintf(&b, "  - `%s` (%s): %s", param.Name, required, param.About)
+				if param.Example != "" {
+					fmt.Fprintf(&b, ", for example `%s`", param.Example)
+				}
+				b.WriteString("\n")
+			}
+		}
+		b.WriteString("\n")
+	}
+
+	b.WriteString(`## Response shape
+
+Every command returns the same envelope, whatever it asked upstream:
+
+    command           the verb that ran
+    target            what it ran against, normalised
+    verdict           {state: ok|warn|none, headline, detail} — the answer, in a sentence
+    blocks            the evidence, each naming a display component and its props
+    notes             provenance and limits
+    degraded          upstreams that failed, when the rest of the answer still stands
+    ttl               seconds this answer stays valid
+    elapsed_ms        wall time
+    upstream_queries  how many lookups it cost
+
+An upstream failure is not an HTTP error. The status stays 200, the failure is
+named in "degraded", and the parts that did answer are still returned. Read
+"degraded" before trusting a screen to be complete.
+
+## Errors
+
+Arguments that are wrong are a real HTTP error, because nothing was looked up.
+The status is 400 and the body is the same envelope with "error" set:
+
+    error.code     a closed set: missing_argument, invalid_argument
+    error.message  the refusal in one sentence
+    error.hint     what a corrected call looks like
+
+Branch on error.code, not on the message. The text representation carries the
+same code on a line reading "error <code>". A 200 never carries "error", so
+its presence and the status always agree.
+
+## Versioning
+
+`)
+
+	fmt.Fprintf(&b, "Every response carries X-API-Version: %s, naming the contract it was\n"+
+		"produced under. Send the same header on a request to pin it; a version this\n"+
+		"surface does not serve is refused with error.code unsupported_version rather\n"+
+		"than silently answered by a different one.\n\n", screen.APIVersion)
+
+	b.WriteString(screen.VersionPolicy)
+
+	b.WriteString(`
+
+## Machine-readable
+
+    /llms.txt                   this file
+    /openapi.json               OpenAPI 3.1 for every command above
+    /.well-known/api-catalog    RFC 9727 linkset, one anchor per command
+    /api/mcp                    MCP server, Streamable HTTP, one tool per command
+    /developers                 the same surface written for a person
+    /about                      how a screen is read and what the guard refuses
+    /privacy                    what is stored, which is nothing between requests
+
+Every response also carries them as Link headers: rel="service-desc" for the
+OpenAPI document, rel="service-doc" for /developers, rel="describedby" for this
+file. A caller holding any single response can find the rest of the surface.
+
+The pages negotiate markdown: send Accept: text/markdown to / or /about and
+the response is text/markdown rather than html, with Vary: Accept set.
+
+/api/mcp answers an agent that is somewhere else. It is a real Streamable HTTP
+endpoint, always there, serving every command above as its own tool.
+
+The browser app registers the same commands as WebMCP tools on
+document.modelContext, so an agent already in the page calls them without
+leaving it, and the answer renders on screen where the person can read the
+evidence rather than only the agent seeing it. Where the browser has not shipped
+WebMCP a polyfill installs it, so the tools are there either way.
+
+    const tools = await document.modelContext.getTools()
+    await document.modelContext.executeTool(tool, '{"target":"github.com"}')
+
+document.modelContext is canonical; navigator.modelContext is a deprecated alias
+and may be absent. The root element carries data-webmcp, which is "registered"
+once the tools are up, and data-webmcp-server pointing at /api/mcp. Read that
+attribute before concluding a page has no tools.
+
+## Limits
+
+`)
+
+	fmt.Fprintf(&b, "- at most %d upstream queries per request\n", screen.MaxUpstream)
+	fmt.Fprintf(&b, "- resolvers are a fixed list of %d and cannot be pointed elsewhere: ", len(resolvers.List))
+	names := make([]string, 0, len(resolvers.List))
+	for _, resolver := range resolvers.List {
+		names = append(names, resolver.Name+" ("+resolver.IP+")")
+	}
+	b.WriteString(strings.Join(names, ", "))
+	b.WriteString("\n")
+	fmt.Fprintf(&b, "- outbound ports are an allowlist: %s. PORTS waives it, and only it\n", portList())
+	b.WriteString("- every destination is validated immediately before connect, so private, loopback, link-local and reserved space is unreachable through this tool\n")
+	b.WriteString("- PORTS completes a TCP handshake, so it appears in the target's logs as a connection from this deployment\n")
+
+	b.WriteString("\n## Deliberately not here\n\n")
+	for _, entry := range commands.NotHere {
+		fmt.Fprintf(&b, "- %s — %s\n", entry[0], entry[1])
+	}
+
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("Cache-Control", "public, s-maxage=86400, stale-while-revalidate=172800")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, b.String())
+}
+
+func portList() string {
+	// AllowedPorts walks a map, so the order is not stable. This document is
+	// cached for a day and diffed by people; sort it.
+	ports := guard.AllowedPorts()
+	sort.Ints(ports)
+	out := make([]string, 0, len(ports))
+	for _, port := range ports {
+		out = append(out, itoa(port))
+	}
+	return strings.Join(out, ", ")
+}
+
+func itoa(n int) string { return fmt.Sprint(n) }

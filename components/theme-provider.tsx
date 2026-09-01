@@ -3,6 +3,8 @@
 import * as React from "react"
 import { ThemeProvider as NextThemesProvider, useTheme } from "next-themes"
 
+import { useMountEffect } from "@/hooks/use-mount-effect"
+
 function ThemeProvider({
   children,
   ...props
@@ -37,7 +39,15 @@ function isTypingTarget(target: EventTarget | null) {
 function ThemeHotkey() {
   const { resolvedTheme, setTheme } = useTheme()
 
-  React.useEffect(() => {
+  // The toggle reads the theme at keypress time rather than at subscribe time.
+  // Without this the listener would name resolvedTheme as a dependency and tear
+  // itself down and back up on every toggle, which is a lot of ceremony for a
+  // window listener that should be attached exactly once.
+  const toggle = React.useEffectEvent(() => {
+    setTheme(resolvedTheme === "dark" ? "light" : "dark")
+  })
+
+  useMountEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.defaultPrevented || event.repeat) {
         return
@@ -55,7 +65,7 @@ function ThemeHotkey() {
         return
       }
 
-      setTheme(resolvedTheme === "dark" ? "light" : "dark")
+      toggle()
     }
 
     window.addEventListener("keydown", onKeyDown)
@@ -63,9 +73,32 @@ function ThemeHotkey() {
     return () => {
       window.removeEventListener("keydown", onKeyDown)
     }
-  }, [resolvedTheme, setTheme])
+  })
 
   return null
 }
 
-export { ThemeProvider }
+// The hotkey above is unreachable from a cold page: the command input carries
+// autoFocus, so focus is already on an INPUT and isTypingTarget refuses. This
+// is the same control with a surface you can actually hit.
+//
+// The label is the noun, not the state. Naming the state would mean reading
+// resolvedTheme, which is undefined during the server render and would either
+// mismatch on hydration or need a mounted flag to suppress it; neither is worth
+// it for a word on a button that toggles either way.
+function ThemeToggle() {
+  const { resolvedTheme, setTheme } = useTheme()
+
+  return (
+    <button
+      type="button"
+      title="press d for the same thing, when the prompt does not have focus"
+      className="underline-offset-4 hover:text-foreground hover:underline"
+      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+    >
+      theme
+    </button>
+  )
+}
+
+export { ThemeProvider, ThemeToggle }

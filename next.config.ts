@@ -1,5 +1,111 @@
 import type { NextConfig } from "next"
 
-const nextConfig: NextConfig = {}
+import { COMMANDS } from "./app/commands/grammar"
+
+// In production Vercel routes /api/* to the Go functions in api/ directly.
+// Locally nothing does, so `pnpm dev` points those paths at cmd/devapi.
+// The rewrite only exists when DEV_API_ORIGIN is set, so a production build
+// never carries it.
+const devApi = process.env.DEV_API_ORIGIN
+
+// A rewrite destination is not itself rewritten, so in development the pretty
+// paths have to name the Go server directly rather than route through the
+// /api/* rewrite below.
+const api = (path: string) => (devApi ? `${devApi}${path}` : path)
+
+// The curl and agent surface: `curl /tls/github.com` rather than
+// `curl '/api/tls?command=TLS&target=github.com'`. Derived from the same
+// COMMANDS the browser parses, and internal/wiring checks these against the Go
+// list that llms.txt, OpenAPI and MCP are generated from.
+function prettyPaths() {
+  return COMMANDS.filter((spec) => spec.endpoint).flatMap((spec) => {
+    const verb = spec.name.toLowerCase()
+    const query = `command=${spec.name}`
+
+    if (spec.argument === "none") {
+      return [{ source: `/${verb}`, destination: api(`${spec.endpoint}?${query}`) }]
+    }
+
+    if (spec.argument === "pair") {
+      return [
+        {
+          source: `/${verb}/:target/:other`,
+          destination: api(`${spec.endpoint}?${query}&target=:target&other=:other`),
+        },
+      ]
+    }
+
+    const one = {
+      source: `/${verb}/:target`,
+      destination: api(`${spec.endpoint}?${query}&target=:target`),
+    }
+
+    // A cidr is the one argument that always carries a slash, so it needs two
+    // segments and the destination has to put them back together. The
+    // one-segment rule stays for the %2F-encoded spelling.
+    if (spec.argument === "cidr") {
+      return [
+        {
+          source: `/${verb}/:target/:bits`,
+          destination: api(`${spec.endpoint}?${query}&target=:target/:bits`),
+        },
+        one,
+      ]
+    }
+
+    // A second segment where the command takes one: DIG a record type, PORTS a
+    // port list, PING a count. Same names the query form uses.
+    const second: Record<string, string> = { DIG: "type", PORTS: "ports", PING: "count" }
+    const extra = second[spec.name]
+    if (!extra) {
+      return [one]
+    }
+
+    return [
+      {
+        source: `/${verb}/:target/:${extra}`,
+        destination: api(`${spec.endpoint}?${query}&target=:target&${extra}=:${extra}`),
+      },
+      one,
+    ]
+  })
+}
+
+const nextConfig: NextConfig = {
+  // Next 16 blocks dev-only resources requested from an origin it does not
+  // recognise, and the block is quiet: the page still renders its server HTML,
+  // so it looks fine while the HMR socket is refused and the app never
+  // hydrates. Opening the same server on 127.0.0.1 instead of localhost is
+  // enough to trigger it, and the symptom reads as a broken component rather
+  // than a blocked request.
+  allowedDevOrigins: ["127.0.0.1", "localhost"],
+
+  // WebMCP is only available in an origin-isolated document: with
+  // document.domain reachable, the origin can change under a registered tool,
+  // so Chromium disables the API entirely rather than let that happen. This is
+  // the header that opts in, and without it the native implementation refuses
+  // no matter what the page registers.
+  async headers() {
+    return [{ source: "/:path*", headers: [{ key: "Origin-Agent-Cluster", value: "?1" }] }]
+  },
+
+  async rewrites() {
+    const discovery = [
+      { source: "/llms.txt", destination: api("/api/llms") },
+      { source: "/openapi.json", destination: api("/api/openapi") },
+      // RFC 9727 fixes the path, so this is the one route whose location is
+      // not ours to choose.
+      { source: "/.well-known/api-catalog", destination: api("/api/catalog") },
+    ]
+
+    const routes = [...discovery, ...prettyPaths()]
+
+    if (!devApi) {
+      return routes
+    }
+
+    return [...routes, { source: "/api/:path*", destination: `${devApi}/api/:path*` }]
+  },
+}
 
 export default nextConfig

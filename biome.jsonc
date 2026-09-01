@@ -1,0 +1,101 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.5.11/schema.json",
+	"vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+
+	"files": {
+		"ignoreUnknown": false,
+		"includes": [
+			"**",
+			"!.next/",
+			"!out/",
+			"!build/",
+			"!.vercel/",
+			"!next-env.d.ts"
+		]
+	},
+
+	// Prettier still owns formatting, because prettier-plugin-tailwindcss sorts
+	// the class lists and Biome has no equivalent outside its nursery. Two
+	// formatters would fight, so this one is off rather than merely unused.
+	"formatter": { "enabled": false },
+
+	// Off for the same reason: import order is whatever Prettier and the diff
+	// left, and turning this on would reorder every file in the repo at once.
+	"assist": { "enabled": false },
+
+	// globals.css is Tailwind 4, which is all at-rules Biome would otherwise
+	// read as unknown syntax.
+	"css": { "parser": { "tailwindDirectives": true } },
+
+	"linter": {
+		"enabled": true,
+		// Replaces eslint-config-next's core-web-vitals and typescript configs.
+		"domains": { "next": "recommended", "react": "recommended" },
+		"rules": {
+			"preset": "recommended",
+			"suspicious": {
+				// Deliberate throughout. A screen renders one payload whose block and
+				// note lists are built once by the handler and never reordered,
+				// filtered or re-keyed, so position is a stable identity. Keying on the
+				// data instead is what caused the duplicate-key bug this codebase
+				// already had: a TLS chain with two intermediates, and VS comparing two
+				// domains, both produce legitimately repeated labels.
+				"noArrayIndexKey": "off"
+			},
+			"style": {
+				// useEffect is banned outright. Almost every effect is something
+				// else wearing a disguise: state that could be derived inline, a
+				// fetch, or an event handler routed through a state flag. What is
+				// genuinely left is synchronisation with something outside React,
+				// which is always setup-on-mount and teardown-on-unmount, so it goes
+				// through hooks/use-mount-effect.ts. That file is the one place the
+				// import is allowed, by its own suppression comment.
+				"noRestrictedImports": {
+					"level": "error",
+					"options": {
+						"paths": {
+							"react": {
+								"importNames": ["useEffect"],
+								"message": "useEffect is banned. Derive the value inline, do the work in the event handler, or use useMountEffect from @/hooks/use-mount-effect for genuine external sync."
+							}
+						}
+					}
+				}
+			}
+		}
+	},
+
+	"overrides": [
+		{
+			// markdown-graphs is copied in from a shadcn registry rather than
+			// installed from npm, so these are upstream source that happens to live
+			// here. Patching them locally would mean every future `shadcn add` either
+			// clobbers the fix or conflicts with it, which is a worse trade than
+			// scoping the rules off the vendored files. Anything in app/ is ours and
+			// stays fully linted.
+			"includes": [
+				"components/graph-*.tsx",
+				"components/ui/graph-*.tsx",
+				"lib/graph-clock.ts",
+				"lib/graph-motion.ts"
+			],
+			"linter": {
+				"rules": {
+					"correctness": {
+						"useExhaustiveDependencies": "off",
+						"noNestedComponentDefinitions": "off"
+					},
+					// role="list" on a <ul> is not redundant in practice: Safari drops
+					// list semantics when list-style is none, which is the case here.
+					"a11y": { "noRedundantRoles": "off" },
+					// lib/graph-clock.ts keeps its useEffect. It is a genuine external
+					// subscription — a setInterval that ticks the clock the frames
+					// render against — so the ban would only turn it into
+					// useMountEffect. Not worth owning a registry file over. If these
+					// files ever stop being vendored, that is a one-line conversion.
+					"style": { "noRestrictedImports": "off" }
+				}
+			}
+		}
+	]
+}

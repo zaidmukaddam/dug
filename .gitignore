@@ -34,3 +34,15 @@ pnpm-debug.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+.vercel
+
+# go
+/cmd/devapi/devapi
+
+# vercel
+.vercel
+
+# private design notes. these are the pre-build spec for this tool and they
+# reference other unreleased work, so they stay out of a public repository.
+scope-network*.md
+scope.md
