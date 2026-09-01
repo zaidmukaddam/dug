@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -58,16 +59,55 @@ func (a Answer) Fingerprint() string {
 	return strings.Join(sorted, "\n")
 }
 
+// What a name may contain once IDNA has done its work: letters, digits, hyphen,
+// dot, and underscore. The underscore is not legal in a hostname and is exactly
+// what the records this tool exists to look up need — _dmarc, _acme-challenge,
+// selector._domainkey — which is also why STD3 rules are off in idna.go.
+//
+// That leniency is why this check has to exist. With STD3 off, idna passes a
+// slash, a colon and a space straight through, so "http://example.com" became a
+// name, was queried as one, and came back "the name does not exist". Refusing
+// the input is the honest answer; claiming a real domain is missing is not.
+var validName = regexp.MustCompile(`^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*$`)
+
+func beforeSlash(value string) string {
+	host, _, _ := strings.Cut(value, "/")
+	return host
+}
+
 // ToName normalises user input to a DNS name, converting unicode through IDNA
 // so the punycode form is what goes on the wire.
+//
+// Errors name the fix rather than the fault, because every one of these is
+// something a person can correct in a keystroke once they know which keystroke.
 func ToName(value string) (string, error) {
 	text := strings.TrimSuffix(strings.TrimSpace(value), ".")
 	if text == "" {
 		return "", fmt.Errorf("empty name")
 	}
+
+	// The three shapes people actually paste, each answered with what to type
+	// instead. Checked before IDNA so the suggestion is in their own spelling,
+	// and only offered when the thing being suggested is itself a name —
+	// otherwise "../etc" earns the advice "try ..".
+	if _, rest, found := strings.Cut(text, "://"); found {
+		if host := beforeSlash(rest); validName.MatchString(host) {
+			return "", fmt.Errorf("that is a url, and this takes a name. try %s", host)
+		}
+	}
+	if host, _, found := strings.Cut(text, "/"); found && validName.MatchString(host) {
+		return "", fmt.Errorf("a name has no path. try %s", host)
+	}
+	if host, port, found := strings.Cut(text, ":"); found && port != "" && validName.MatchString(host) {
+		return "", fmt.Errorf("a name has no port. try %s", host)
+	}
+
 	ascii, err := idnaToASCII(text)
 	if err != nil {
 		return "", err
+	}
+	if !validName.MatchString(ascii) {
+		return "", fmt.Errorf("a name is letters, digits, hyphens and dots, and this has something else in it")
 	}
 	// Punycode expands, so the limit is only meaningful on the wire form. An
 	// over-long name is refused here rather than turned into one query per
