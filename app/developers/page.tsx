@@ -50,10 +50,13 @@ export default function Developers() {
         <h2 className="text-xl">The dug API</h2>
 
         <p className="max-w-3xl text-sm text-pretty text-muted-foreground">
-          Every command is a GET. There is no key, no signup, no rate limit to negotiate and
-          no request body to build. The same URL answers in three representations, and the
-          browser app you can see at <Link href="/" className="text-graph-accent">/</Link> is
-          one of them rather than a separate product.
+          Every command is a GET. There is no key, no signup and no request body to build,
+          and the quota is published on every response rather than negotiated. The same URL
+          answers in three representations, and the browser app you can see at{" "}
+          <Link href="/" className="text-graph-accent">
+            /
+          </Link>{" "}
+          is one of them rather than a separate product.
         </p>
 
         <Frame title="calling it">
@@ -97,9 +100,9 @@ export default function Developers() {
 
           <Frame title="auth">
             <p className="text-sm text-graph-muted">
-              None. Reads are open, there is no key to obtain and no quota to track, so there
-              is nothing here to sandbox. Every destination is validated before connect, which
-              is what makes that safe to offer.
+              None. Reads are open and there is no key to obtain, so there is nothing here to
+              sandbox. Every destination is validated before connect, which is what makes that
+              safe to offer. The quota below applies per address rather than per key.
             </p>
           </Frame>
         </div>
@@ -128,19 +131,64 @@ export default function Developers() {
           </div>
         </Frame>
 
+        <Frame title="rate limits">
+          <div className="flex flex-col gap-4">
+            <FrameRows
+              rows={[
+                { label: "RateLimit-Limit", value: "60 requests per window", accent: true },
+                { label: "RateLimit-Remaining", value: "what is left in this window" },
+                { label: "RateLimit-Reset", value: "seconds until it resets" },
+                { label: "RateLimit-Policy", value: '"fixed";q=60;w=60 — RFC 9331' },
+                { label: "over the quota", value: "429, error.code rate_limited, Retry-After" },
+              ]}
+            />
+            <p className="max-w-3xl text-sm text-pretty text-graph-muted">
+              Sent on every response and not only on a refusal, so a caller can pace itself
+              rather than discover the ceiling by hitting it. Read it honestly: the count
+              lives in the memory of one proxy instance and a serverless deployment runs
+              several, so a client spread across them gets more than 60. It is a real
+              backstop and a truthful number to pace against. It is not a security control.
+            </p>
+          </div>
+        </Frame>
+
         <Frame title="versioning">
           <p className="max-w-3xl text-sm text-pretty text-graph-muted">
             The paths are unversioned and additive. New commands, blocks and fields may appear
             at any time, so parse defensively and ignore what you do not recognise. A change
             that would break an existing caller ships under a{" "}
-            <span className="text-foreground">/v2/</span> prefix instead of changing these; the
-            current paths would then carry{" "}
-            <span className="text-foreground">Deprecation</span> and{" "}
-            <span className="text-foreground">Sunset</span> headers for at least 180 days
-            before removal. No such header is set today, which is the signal that nothing is
-            deprecated.
+            <span className="text-foreground">/v2/</span> prefix instead of changing these.
           </p>
         </Frame>
+
+        {/* Its own frame with a stable anchor, so the policy can be linked to
+            rather than quoted. An agent deciding whether to integrate asks two
+            questions — how will I be told, and how long do I get — and both
+            answers belong somewhere citable. */}
+        <div id="deprecation" className="scroll-mt-6">
+          <Frame title="deprecation policy">
+            <div className="flex flex-col gap-4">
+              <p className="max-w-3xl text-sm text-pretty text-graph-muted">
+                Nothing is deprecated today, and the absence of a{" "}
+                <span className="text-foreground">Deprecation</span> header is how you can tell.
+                Checking for one on each response is enough; nothing here disappears without it.
+              </p>
+              <FrameRows
+                rows={[
+                  {
+                    label: "Deprecation",
+                    value: "an http-date, the day it became deprecated (RFC 9745)",
+                    accent: true,
+                  },
+                  { label: "Sunset", value: "an http-date, the day it stops answering (RFC 8594)" },
+                  { label: "Link", value: 'rel="deprecation", pointing at what to read' },
+                  { label: "notice", value: "at least 180 days between the two dates" },
+                  { label: "replacement", value: "ships under /v2/ before either is set" },
+                ]}
+              />
+            </div>
+          </Frame>
+        </div>
 
         <h2 className="pt-2 text-xl">Endpoints</h2>
 
@@ -168,6 +216,7 @@ export default function Developers() {
             <DevLink href="/openapi.json" note="openapi 3.1, one operation per command" />
             <DevLink href="/.well-known/api-catalog" note="rfc 9727 linkset" />
             <DevLink href="/api/mcp" note="mcp over streamable http" />
+            <DevLink href="/contact" note="report a wrong answer" />
           </ul>
         </Frame>
 

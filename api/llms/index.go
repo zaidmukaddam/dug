@@ -144,6 +144,39 @@ its presence and the status always agree.
 
 	b.WriteString(`
 
+## Deprecation
+
+Nothing is deprecated today, and the absence of a Deprecation header is how you
+can tell. When something is:
+
+    Deprecation      an http-date, the day it became deprecated (RFC 9745)
+    Sunset           an http-date, the day it stops answering (RFC 8594)
+    Link             rel="deprecation", pointing at what to read
+
+Both dates appear on the deprecated route's own responses, at least 180 days
+apart, and the replacement ships under a /v2/ prefix before either is set. A
+caller that checks for a Sunset header on each response has all the warning it
+needs; nothing here disappears without one.
+
+## Rate limits
+
+    RateLimit-Limit      requests permitted per window
+    RateLimit-Remaining  what is left in this window
+    RateLimit-Reset      seconds until it resets
+    RateLimit-Policy     "fixed";q=` + itoa(screen.RateLimit) + `;w=` + itoa(screen.RateWindowSeconds) + `  (RFC 9331)
+    RateLimit            "fixed";r=<remaining>;t=<reset>
+
+Sent on every response, not only on a refusal, so you can pace rather than
+discover the limit by hitting it. Past the quota the answer is 429 with
+error.code rate_limited and a Retry-After.
+
+Read the ceiling honestly: it is counted in the memory of one proxy instance and
+a serverless deployment runs several, so a client spread across them gets more
+than ` + itoa(screen.RateLimit) + `. It is a real backstop and a truthful signal to
+pace against, and it is not a security control.`)
+
+	b.WriteString(`
+
 ## Machine-readable
 
     /llms.txt                   this file
@@ -152,6 +185,7 @@ its presence and the status always agree.
     /api/mcp                    MCP server, Streamable HTTP, one tool per command
     /developers                 the same surface written for a person
     /about                      how a screen is read and what the guard refuses
+    /contact                    the issue tracker, and how to report a wrong answer
     /privacy                    what is stored, which is nothing between requests
 
 Every response also carries them as Link headers: rel="service-desc" for the

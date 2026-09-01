@@ -53,6 +53,80 @@ const API_ENDPOINTS = new Set([
 // pkg/wiring fails if the two drift.
 const API_VERSION = "1"
 
+// The published quota, and it is real: requests past it are refused rather than
+// counted and forgiven. Set high enough that a person driving the browser app,
+// which spends one request per command, will never see it.
+//
+// Honest about what it is not: this counts in the memory of one proxy instance,
+// and a serverless deployment runs several. The effective ceiling is therefore
+// this number times however many instances are warm, and a client spread across
+// them gets more than 60. It is a real backstop against one caller hammering one
+// instance, and a truthful signal for a well-behaved agent to pace itself
+// against. It is not a security control and llms.txt says so.
+const RATE_LIMIT = 60
+const RATE_WINDOW_SECONDS = 60
+
+type Bucket = { count: number; resetAt: number }
+const buckets = new Map<string, Bucket>()
+
+// Swept opportunistically rather than on a timer: a proxy instance has no
+// lifecycle hook to clean up on, and an unbounded map is the one way this could
+// hurt a deployment that is otherwise stateless.
+function sweep(now: number) {
+  if (buckets.size < 5000) {
+    return
+  }
+  for (const [key, bucket] of buckets) {
+    if (bucket.resetAt <= now) {
+      buckets.delete(key)
+    }
+  }
+}
+
+function clientKey(request: NextRequest): string {
+  const forwarded = request.headers.get("x-forwarded-for")
+  if (forwarded) {
+    return forwarded.split(",")[0]?.trim() || "unknown"
+  }
+  return request.headers.get("x-real-ip")?.trim() || "unknown"
+}
+
+type Quota = { allowed: boolean; remaining: number; resetSeconds: number }
+
+function take(request: NextRequest): Quota {
+  const now = Date.now()
+  sweep(now)
+
+  const key = clientKey(request)
+  const existing = buckets.get(key)
+
+  if (!existing || existing.resetAt <= now) {
+    buckets.set(key, { count: 1, resetAt: now + RATE_WINDOW_SECONDS * 1000 })
+    return { allowed: true, remaining: RATE_LIMIT - 1, resetSeconds: RATE_WINDOW_SECONDS }
+  }
+
+  existing.count += 1
+  const resetSeconds = Math.max(1, Math.ceil((existing.resetAt - now) / 1000))
+  return {
+    allowed: existing.count <= RATE_LIMIT,
+    remaining: Math.max(0, RATE_LIMIT - existing.count),
+    resetSeconds,
+  }
+}
+
+// Both spellings. RFC 9331 is the structured-field form; the three separate
+// fields are what most clients and every older library actually read, and
+// sending both costs a few bytes.
+function rateHeaders(quota: Quota): Record<string, string> {
+  return {
+    "RateLimit-Limit": String(RATE_LIMIT),
+    "RateLimit-Remaining": String(quota.remaining),
+    "RateLimit-Reset": String(quota.resetSeconds),
+    "RateLimit-Policy": `"fixed";q=${RATE_LIMIT};w=${RATE_WINDOW_SECONDS}`,
+    RateLimit: `"fixed";r=${quota.remaining};t=${quota.resetSeconds}`,
+  }
+}
+
 // The same envelope a Go refusal returns, so a caller that already parses one
 // error shape does not need a second for the errors raised out here.
 function apiError(
@@ -60,7 +134,8 @@ function apiError(
   code: string,
   message: string,
   hint: string,
-  pathname: string
+  pathname: string,
+  extra: Record<string, string> = {}
 ) {
   const body = {
     command: "",
@@ -87,6 +162,7 @@ function apiError(
       link:
         '</openapi.json>; rel="service-desc"; type="application/json", ' +
         '</developers>; rel="service-doc"; type="text/html"',
+      ...extra,
     },
   })
 }
@@ -241,8 +317,28 @@ const PAGES: Record<string, () => string> = {
 
 export function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname
+  const head = pathname.split("/")[1] ?? ""
+  const isCommand = COMMAND_PREFIXES.has(head)
 
-  if (pathname.startsWith("/api/")) {
+  // Both spellings of the same api. /tls/github.com is the one llms.txt tells
+  // an agent to call and it rewrites to /api/tls, so limiting only the /api
+  // form would leave the documented surface uncounted — which it did, until
+  // this was measured.
+  if (pathname.startsWith("/api/") || isCommand) {
+    // Counted before anything else, so a refused request is cheap and a caller
+    // that is over its quota is told so rather than served.
+    const quota = take(request)
+    if (!quota.allowed) {
+      return apiError(
+        429,
+        "rate_limited",
+        `too many requests, more than ${RATE_LIMIT} in ${RATE_WINDOW_SECONDS} seconds`,
+        `wait ${quota.resetSeconds} seconds. RateLimit-Reset says when, Retry-After says the same.`,
+        pathname,
+        { ...rateHeaders(quota), "Retry-After": String(quota.resetSeconds) }
+      )
+    }
+
     // Checked here rather than in each handler: it is one rule about the
     // request, it has to run before any lookup does, and there are twenty
     // handlers that would otherwise each need to remember it.
@@ -253,7 +349,8 @@ export function proxy(request: NextRequest) {
         "unsupported_version",
         `this api does not serve version ${pinned.trim()}`,
         `only version ${API_VERSION} exists. omit X-API-Version to take the current one.`,
-        pathname
+        pathname,
+        rateHeaders(quota)
       )
     }
 
@@ -261,24 +358,38 @@ export function proxy(request: NextRequest) {
     // html 404, so a caller probing the api surface got a react page where it
     // asked for an endpoint. Anything under /api answers in json, including
     // when the answer is that there is nothing here.
-    if (!API_ENDPOINTS.has(pathname)) {
+    // Only for the /api spelling: a pretty path is matched by prefix and its
+    // exact shape is the rewrite's business, not this one's.
+    if (pathname.startsWith("/api/") && !API_ENDPOINTS.has(pathname)) {
       return apiError(
         404,
         "unknown_endpoint",
         `${pathname} is not an endpoint`,
         "every path this api serves is listed in /openapi.json and /llms.txt",
-        pathname
+        pathname,
+        rateHeaders(quota)
       )
     }
-    return NextResponse.next()
+
+    // The quota is reported on the answer too, not only on the refusal: a
+    // caller that only learns its budget by exhausting it cannot pace itself,
+    // which is the whole point of the headers.
+    //
+    // Forwarded as request headers rather than set on the response, because a
+    // response header set here does not survive to the client for these routes.
+    // That was measured: the limiter refused correctly while every 200 reached
+    // curl with no RateLimit fields at all. Go reads these two and writes the
+    // real headers in screen.writePayload, which is the one exit every command
+    // response goes through.
+    const forwarded = new Headers(request.headers)
+    forwarded.set("x-dug-rate-remaining", String(quota.remaining))
+    forwarded.set("x-dug-rate-reset", String(quota.resetSeconds))
+    return NextResponse.next({ request: { headers: forwarded } })
   }
 
   if (PASS_THROUGH.has(pathname)) {
     return NextResponse.next()
   }
-
-  const head = pathname.split("/")[1] ?? ""
-  const isCommand = COMMAND_PREFIXES.has(head)
 
   if (wantsMarkdown(request)) {
     const page = PAGES[pathname]

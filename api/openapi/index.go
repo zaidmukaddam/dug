@@ -129,8 +129,28 @@ func operation(spec commands.Spec) object {
 					"text/plain":       object{"schema": object{"type": "string"}},
 				},
 			},
+			"429": object{
+				"description": "Past the published quota. `Retry-After` and `RateLimit-Reset` " +
+					"both say how many seconds to wait. Every response, not only this one, " +
+					"carries the RateLimit fields so a caller can pace itself before it gets here.",
+				"headers": object{
+					"Retry-After":         rateHeader("Seconds to wait before retrying.", "integer"),
+					"RateLimit-Limit":     rateHeader("Requests permitted per window.", "integer"),
+					"RateLimit-Remaining": rateHeader("Requests left in this window.", "integer"),
+					"RateLimit-Reset":     rateHeader("Seconds until the window resets.", "integer"),
+					"RateLimit-Policy":    rateHeader("RFC 9331 policy, as a structured field.", "string"),
+					"RateLimit":           rateHeader("RFC 9331 state, as a structured field.", "string"),
+				},
+				"content": object{
+					"application/json": object{"schema": object{"$ref": "#/components/schemas/Error"}},
+				},
+			},
 		},
 	}
+}
+
+func rateHeader(about, kind string) object {
+	return object{"description": about, "schema": object{"type": kind}}
 }
 
 // errorSchema is a Payload that is guaranteed to carry `error`. Kept as a
@@ -164,6 +184,7 @@ func errorInfoSchema() object {
 				"enum": []any{
 					screen.CodeMissingArgument, screen.CodeInvalidArgument,
 					screen.CodeUnsupportedVersion, screen.CodeUnknownEndpoint,
+					screen.CodeRateLimited,
 				},
 			},
 			"message": object{

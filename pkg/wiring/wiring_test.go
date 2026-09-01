@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -198,5 +199,30 @@ func TestAPIVersionsAgree(t *testing.T) {
 	}
 	if match[1] != screen.APIVersion {
 		t.Errorf("proxy.ts has version %q, screen.APIVersion is %q", match[1], screen.APIVersion)
+	}
+}
+
+// The quota is enforced in proxy.ts and published in llms.txt and the OpenAPI
+// document from the Go constants. Drift means the documents tell a caller to
+// pace against a number nothing applies, which is worse than publishing none.
+func TestRateLimitConstantsAgree(t *testing.T) {
+	proxy := read(t, repoRoot(t), "proxy.ts")
+
+	for _, test := range []struct {
+		name string
+		re   string
+		want int
+	}{
+		{"RATE_LIMIT", `const RATE_LIMIT = (\d+)`, screen.RateLimit},
+		{"RATE_WINDOW_SECONDS", `const RATE_WINDOW_SECONDS = (\d+)`, screen.RateWindowSeconds},
+	} {
+		match := regexp.MustCompile(test.re).FindStringSubmatch(proxy)
+		if match == nil {
+			t.Errorf("could not find %s in proxy.ts", test.name)
+			continue
+		}
+		if match[1] != strconv.Itoa(test.want) {
+			t.Errorf("proxy.ts %s is %s, Go publishes %d", test.name, match[1], test.want)
+		}
 	}
 }

@@ -66,12 +66,24 @@ const (
 	CodeUnsupportedVersion = "unsupported_version"
 	// A path under /api that no function answers on.
 	CodeUnknownEndpoint = "unknown_endpoint"
+	// The caller went past the published quota. Raised in proxy.ts, before a
+	// request reaches any handler, which is why no Go code returns it.
+	CodeRateLimited = "rate_limited"
 )
 
 // APIVersion is the contract this surface answers under. Sent on every
 // response as X-API-Version, and accepted on a request as the same header for
 // a caller that wants to pin it.
 const APIVersion = "1"
+
+// The published quota. Enforced in proxy.ts, which is the one place that sees
+// every /api request before a handler runs; these exist so llms.txt and the
+// OpenAPI document quote the same numbers the proxy applies, and pkg/wiring
+// fails if the two drift.
+const (
+	RateLimit         = 60
+	RateWindowSeconds = 60
+)
 
 // VersionPolicy is the promise a caller needs before it will hardcode a path.
 //
@@ -278,6 +290,8 @@ func writePayload(
 	// the deprecated surface is where Deprecation and Sunset will appear.
 	w.Header().Set("X-API-Version", APIVersion)
 
+	writeRateLimit(w, req)
+
 	// RFC 8631: the machine description of this endpoint, and the page a person
 	// would read instead. Discoverable from any response rather than only from
 	// the one document that lists them.
@@ -300,6 +314,37 @@ func writePayload(
 
 	w.WriteHeader(status)
 	w.Write(body)
+}
+
+// writeRateLimit publishes the quota on every answer.
+//
+// The counting happens in proxy.ts, which is the only layer that sees every
+// /api request before it is routed. It cannot set these on the response itself
+// — a header set there does not reach the client for these routes — so it
+// forwards the two live numbers as request headers and they are turned into
+// real response headers here.
+//
+// The policy is emitted whether or not those arrive. A direct hit on a Go
+// function in development has no proxy in front of it, and publishing the
+// ceiling without the current count is still worth more to a caller than
+// publishing nothing.
+func writeRateLimit(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("RateLimit-Limit", itoa(RateLimit))
+	w.Header().Set("RateLimit-Policy",
+		`"fixed";q=`+itoa(RateLimit)+`;w=`+itoa(RateWindowSeconds))
+
+	if req == nil {
+		return
+	}
+	remaining := req.Header.Get("x-dug-rate-remaining")
+	reset := req.Header.Get("x-dug-rate-reset")
+	if remaining == "" || reset == "" {
+		return
+	}
+
+	w.Header().Set("RateLimit-Remaining", remaining)
+	w.Header().Set("RateLimit-Reset", reset)
+	w.Header().Set("RateLimit", `"fixed";r=`+remaining+`;t=`+reset)
 }
 
 // Fail refuses a request whose arguments are wrong, as a screen a person can

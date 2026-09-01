@@ -117,6 +117,13 @@ export default function Privacy() {
             This page describes the deployment at dug.sh. Running the project yourself removes
             the analytics scripts and every third party except the upstreams a command queries.
           </p>
+          <p>
+            Questions about any of this go to the issue tracker, which is linked from{" "}
+            <Link href="/contact" className="hover:text-foreground">
+              /contact
+            </Link>
+            .
+          </p>
           <Link href="/" className="hover:text-foreground">
             back to the terminal
           </Link>
