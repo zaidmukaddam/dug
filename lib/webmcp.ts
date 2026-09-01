@@ -35,6 +35,7 @@ import { useEffectEvent } from "react"
 import { COMMANDS } from "@/app/commands/grammar"
 import { useMountEffect } from "@/hooks/use-mount-effect"
 import type { Payload } from "@/lib/cache"
+import { INVESTIGATIONS } from "@/lib/investigations"
 
 type ToolDescriptor = {
   name: string
@@ -165,11 +166,29 @@ function describe(payload: Payload): string {
   return lines.join("\n")
 }
 
-export function useWebMcp(run: (text: string) => Promise<Payload | null>) {
+// A worked example for the tool description, taken from the landing's own
+// presets so the two cannot describe different grammars.
+function example(id: string): string {
+  const investigation = INVESTIGATIONS.find((entry) => entry.id === id)
+  if (!investigation) {
+    return ""
+  }
+  return `"${investigation.question}" with steps ${JSON.stringify(investigation.steps("example.com"))}`
+}
+
+export function useWebMcp(
+  run: (text: string) => Promise<Payload | null>,
+  investigate: (
+    question: string,
+    target: string,
+    steps: string[]
+  ) => Promise<{ command: string; payload: Payload }[]>
+) {
   // Tools are registered once for the life of the page, so a tool invoked ten
   // minutes later must reach the current run rather than the one that happened
   // to be in scope at mount.
   const runLatest = useEffectEvent(run)
+  const investigateLatest = useEffectEvent(investigate)
 
   useMountEffect(() => {
     const context = modelContext()
@@ -238,6 +257,111 @@ export function useWebMcp(run: (text: string) => Promise<Payload | null>) {
 
       tools.push(tool)
     }
+
+    // The one tool with no counterpart on the remote server, because it is the
+    // one whose output is the page.
+    //
+    // /mcp could run the same four lookups and hand back four payloads, and an
+    // agent there could already do that by calling four tools. What it cannot
+    // do is leave them on a screen, in order, under the question that produced
+    // them, for the person who asked. That is the whole difference, and it is
+    // why this is registered here and not in the Go registry.
+    tools.push({
+      name: "dug_investigate",
+      description:
+        "Answer a question that takes several lookups, and build the case on the page while " +
+        "you do. You choose the commands and the order — this is your plan, not a preset — " +
+        "and each screen is left on screen, in sequence, under the question that produced it, " +
+        "so the person watching ends up with the evidence rather than your summary of it. " +
+        "Prefer this over calling the single-command tools yourself whenever the user has " +
+        "described a symptom rather than named a lookup, and whenever one answer will not " +
+        "settle it. Steps use the same grammar as the other tools: a command name, a target, " +
+        "and an optional second argument. For example " +
+        example("mail") +
+        ", or " +
+        example("dns") +
+        ". A step naming a command that does not exist is skipped and reported back to you; " +
+        "the rest still run.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          question: {
+            type: "string",
+            description:
+              "The question being answered, in the words the person would use — it becomes " +
+              "the heading the evidence is filed under. Not a restatement of the commands.",
+          },
+          target: {
+            type: "string",
+            description: "The domain or host under investigation, for the case file heading.",
+          },
+          steps: {
+            type: "array",
+            description:
+              "The commands to run, in order, each a full command line such as " +
+              '"MAIL example.com" or "DIG example.com MX". Three to five is usually right: ' +
+              "enough to be conclusive, few enough to read.",
+          },
+        },
+        required: ["question", "target", "steps"],
+      },
+      annotations: { readOnlyHint: true, untrustedContentHint: true },
+      execute: async (input) => {
+        const question = (input?.question ?? "").trim()
+        const target = (input?.target ?? "").trim()
+        // A model may hand this back as an array or, less often, as a
+        // newline or comma separated string. Both are obviously meant.
+        const raw = input?.steps
+        const steps = (Array.isArray(raw) ? raw : String(raw ?? "").split(/[\n,]/))
+          .map((step) => String(step).trim())
+          .filter(Boolean)
+
+        if (!question || !target || steps.length === 0) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: "investigate needs a question, a target, and at least one command to run",
+              },
+            ],
+            isError: true,
+          }
+        }
+
+        const found = await investigateLatest(question, target, steps)
+        if (found.length === 0) {
+          return {
+            content: [{ type: "text", text: `none of those commands could run against ${target}` }],
+            isError: true,
+          }
+        }
+
+        // Say which steps did not run rather than quietly returning fewer
+        // answers than were asked for. A plan that half worked is a thing the
+        // model needs to know about, and the person can already see the gap.
+        const ran = new Set(found.map((step) => step.command))
+        const skipped = steps.filter((step) => !ran.has(step))
+
+        // The verdicts in order, so the model can reason about the case without
+        // walking every block, and the payloads underneath so it can if it
+        // wants to. The person already has the screens.
+        const summary = [
+          `${question} — ${target}`,
+          ...found.map((step) => `\n${step.command}\n${describe(step.payload)}`),
+          ...(skipped.length > 0 ? [`\nnot run: ${skipped.join(", ")}`] : []),
+        ].join("\n")
+
+        return {
+          content: [{ type: "text", text: summary }],
+          structuredContent: {
+            question,
+            target,
+            steps: found.map((step) => ({ command: step.command, payload: step.payload })),
+            skipped,
+          },
+        }
+      },
+    })
 
     // provideContext replaces the whole set in one call, so it cannot collide
     // with a set this page already registered. registerTool can, and does: an

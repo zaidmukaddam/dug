@@ -85,6 +85,15 @@ The MCP server is stateless and issues no session: nothing is stored between
 queries anywhere else here either. Its tools dispatch to the same handlers the
 HTTP routes use, so there is no second implementation to drift.
 
+The browser app registers one tool that has no counterpart on the server:
+`dug_investigate`. An agent hands it a question, a target and a list of
+commands — its own plan, not a preset — and each screen is left on the page, in
+order, under the question that produced them. Someone debugging mail knows the
+symptom, not that the answer takes four lookups; that is the part a model
+supplies and a page is good at displaying. The remote server could run the same
+commands and return the same payloads, and cannot leave the evidence anywhere a
+person is looking, which is the only thing an investigation adds.
+
 The browser app registers the same commands on `document.modelContext`, so an
 agent already in the page calls them without leaving it. Those calls run the
 ordinary command path, which means the answer renders on screen where the

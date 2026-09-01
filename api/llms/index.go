@@ -235,6 +235,23 @@ leaving it, and the answer renders on screen where the person can read the
 evidence rather than only the agent seeing it. Where the browser has not shipped
 WebMCP a polyfill installs it, so the tools are there either way.
 
+It registers one tool that is not a command and has no counterpart here:
+dug_investigate. It takes a question, a target and a list of commands, runs them
+in order, and leaves every screen on the page under the question that produced
+them. The plan is not a preset and there is no menu of investigations: the
+calling model writes the sequence out of the same grammar every other tool uses,
+which is the part a model is good at and a lookup table is not.
+
+Reach for it when someone has described a symptom rather than named a lookup —
+mail going to spam, a dns change that has not landed, a host that is slow —
+because the answer is which four lookups to run and what it means when one
+disagrees with the others.
+
+It is deliberately not served here. This endpoint could run the same commands
+and return the same payloads, and an agent here can already do that by calling
+them itself. What it cannot do is leave the evidence somewhere a person is
+looking, which is the only thing the investigation adds.
+
     const tools = await document.modelContext.getTools()
     await document.modelContext.executeTool(tool, '{"target":"github.com"}')
 

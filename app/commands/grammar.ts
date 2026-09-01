@@ -33,6 +33,7 @@ export type CommandName =
   | "SEO"
   | "AEO"
   | "OG"
+  | "WEBMCP"
   | "HELP"
 
 // `endpoint` is a host or a bare address, which is what the reachability
@@ -253,6 +254,14 @@ export const COMMANDS: CommandSpec[] = [
     argument: "domain",
     summary: "the share card, with the image fetched and measured",
     example: "OG example.com",
+  },
+  {
+    name: "WEBMCP",
+    family: "readability",
+    endpoint: "/api/webmcp",
+    argument: "domain",
+    summary: "tools for an agent in the page, and the mcp surface for one that is not",
+    example: "WEBMCP example.com",
   },
   {
     name: "HELP",

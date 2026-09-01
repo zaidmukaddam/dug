@@ -285,6 +285,36 @@ func Check(ctx context.Context, origin, path string) Probe {
 	return probe
 }
 
+// ScriptSources is every script the document loads, resolved against base.
+//
+// Parsed from the html rather than taken off a Page, because the caller that
+// wants this wants the bodies too: what a page does at runtime is written in
+// its bundles, not in the markup, and the markup is only the index to them.
+// Inline scripts have no src and are already in the body the caller holds.
+func ScriptSources(body, base string) []string {
+	root, err := html.Parse(strings.NewReader(body))
+	if err != nil {
+		return nil
+	}
+
+	found := []string{}
+	var walkScripts func(node *html.Node)
+	walkScripts = func(node *html.Node) {
+		if node.Type == html.ElementNode && node.Data == "script" {
+			if src := attr(node, "src"); src != "" {
+				if absolute := absolute(base, src); absolute != "" {
+					found = append(found, absolute)
+				}
+			}
+		}
+		for child := node.FirstChild; child != nil; child = child.NextSibling {
+			walkScripts(child)
+		}
+	}
+	walkScripts(root)
+	return found
+}
+
 // Image is a card image actually fetched, which is the whole difference
 // between "og:image is declared" and "the card works".
 type Image struct {

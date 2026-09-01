@@ -101,7 +101,7 @@ func TestGrammarCommandSet(t *testing.T) {
 	want := []string{
 		"DIG", "PROP", "TTL", "NS", "DNSSEC", "RDAP", "WATCH", "TLS", "HTTP",
 		"TRACE", "MAIL", "SPF", "IP", "ASN", "NET", "PING", "ROUTE", "PORTS",
-		"VS", "SRC", "ME", "SEO", "AEO", "OG", "HELP",
+		"VS", "SRC", "ME", "SEO", "AEO", "OG", "WEBMCP", "HELP",
 	}
 	for _, command := range want {
 		if !got[command] {

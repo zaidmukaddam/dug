@@ -36,6 +36,7 @@ import (
 	srcapi "github.com/zaidmukaddam/dug/api/src"
 	tlsapi "github.com/zaidmukaddam/dug/api/tls"
 	vsapi "github.com/zaidmukaddam/dug/api/vs"
+	webmcpapi "github.com/zaidmukaddam/dug/api/webmcp"
 	"github.com/zaidmukaddam/dug/pkg/commands"
 	"github.com/zaidmukaddam/dug/pkg/mcpx"
 )
@@ -62,6 +63,7 @@ var byEndpoint = map[string]http.HandlerFunc{
 	"/api/src":       srcapi.Handler,
 	"/api/tls":       tlsapi.Handler,
 	"/api/vs":        vsapi.Handler,
+	"/api/webmcp":    webmcpapi.Handler,
 }
 
 type rpcRequest struct {

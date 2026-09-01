@@ -144,6 +144,10 @@ var List = []Spec{
 	{Name: "OG", Family: "readability", Endpoint: "/api/og", Argument: "domain",
 		Summary: "the share card, with the image fetched and measured",
 		Example: "OG example.com", Path: "/og/{target}"},
+
+	{Name: "WEBMCP", Family: "readability", Endpoint: "/api/webmcp", Argument: "domain",
+		Summary: "tools for an agent in the page, and the mcp surface for one that is not",
+		Example: "WEBMCP example.com", Path: "/webmcp/{target}"},
 }
 
 // NotHere mirrors NOT_HERE in the grammar. An agent that knows what this tool

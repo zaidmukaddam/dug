@@ -12,7 +12,7 @@ import (
 // there, and a reset mid-body used to read as a clean short body.
 func TestReadBodyReportsTruncationAndKeepsTheError(t *testing.T) {
 	oversized := strings.Repeat("x", MaxBody+64)
-	body, truncated, err := readBody(strings.NewReader(oversized))
+	body, truncated, err := readBody(strings.NewReader(oversized), MaxBody)
 	if !truncated {
 		t.Error("a body past the cap was not reported as truncated")
 	}
@@ -24,14 +24,14 @@ func TestReadBodyReportsTruncationAndKeepsTheError(t *testing.T) {
 	}
 
 	exact := strings.Repeat("x", MaxBody)
-	if body, truncated, _ = readBody(strings.NewReader(exact)); truncated {
+	if body, truncated, _ = readBody(strings.NewReader(exact), MaxBody); truncated {
 		t.Error("a body of exactly the cap was reported as truncated")
 	} else if len(body) != MaxBody {
 		t.Errorf("kept %d bytes of an exact-cap body, want %d", len(body), MaxBody)
 	}
 
 	reset := errors.New("connection reset by peer")
-	body, truncated, err = readBody(io.MultiReader(strings.NewReader(`{"partial":`), iotest.ErrReader(reset)))
+	body, truncated, err = readBody(io.MultiReader(strings.NewReader(`{"partial":`), iotest.ErrReader(reset)), MaxBody)
 	if !errors.Is(err, reset) {
 		t.Errorf("a mid-body reset returned err %v, want it kept", err)
 	}

@@ -12,21 +12,38 @@ import { useCallback, useRef, useState } from "react"
 
 import { COMMANDS, parse, type CommandSpec, type ParseFailure } from "@/app/commands/grammar"
 import { Palette } from "@/app/commands/palette"
+import { CaseFile, type CaseStep } from "@/app/screens/case"
 import { Frame, FrameRows } from "@/app/screens/frame"
 import { helpPayload } from "@/app/screens/help"
 import { Screen } from "@/app/screens/screen"
 import { ThemeToggle } from "@/components/theme-provider"
 import { cacheKey, cacheSize, readCache, writeCache, type Payload } from "@/lib/cache"
 import { easeOutCubic } from "@/lib/graph-motion"
+import { INVESTIGATIONS, type Investigation } from "@/lib/investigations"
 import { RESOLVERS } from "@/lib/resolvers"
 import { cn } from "@/lib/utils"
 import { useWebMcp } from "@/lib/webmcp"
 
-type Entry = {
-  id: number
-  label: string
-  payload: Payload
-}
+// One answer, or one question that took several.
+//
+// A case is not a list of answers with a title on it: it is created before its
+// first lookup returns and filled in as they arrive, so the person watches the
+// evidence assemble rather than waiting on a spinner and then being handed a
+// finished page.
+type Entry =
+  | { kind: "screen"; id: number; label: string; payload: Payload }
+  | {
+      kind: "case"
+      id: number
+      question: string
+      target: string
+      planned: string[]
+      // Sparse until the plan finishes: index n is the nth planned command.
+      steps: (CaseStep | undefined)[]
+    }
+
+// Which case, and which step of it, a result belongs to.
+type Slot = { caseId: number; index: number }
 
 type Status = "idle" | "running"
 
@@ -62,58 +79,132 @@ export default function Page() {
 
   const push = useCallback((label: string, payload: Payload) => {
     nextId.current += 1
-    setEntries((current) => [{ id: nextId.current, label, payload }, ...current].slice(0, 12))
+    setEntries((current) => [
+      { kind: "screen" as const, id: nextId.current, label, payload },
+      ...current,
+    ].slice(0, 12))
+  }, [])
+
+  // A lookup landing in its own slot inside an open case rather than beside it.
+  // Indexed by position in the plan: appending put a result in the slot of a
+  // step that had failed, so one bad command mislabelled every step after it.
+  const pushInto = useCallback((slot: Slot, step: CaseStep) => {
+    setEntries((current) =>
+      current.map((entry) => {
+        if (entry.kind !== "case" || entry.id !== slot.caseId) {
+          return entry
+        }
+        const steps = entry.steps.slice()
+        steps[slot.index] = step
+        return { ...entry, steps }
+      })
+    )
   }, [])
 
   // One path for every caller. A WebMCP tool call runs this too, so an agent
   // and a person get the same parse, the same cache and the same screen, and
   // whatever the agent asked for is left on the page for the person to read.
+  //
+  // `into` is the open case a result belongs to. It also suppresses the running
+  // status, because a case draws its own progress and the shared skeleton would
+  // otherwise flash between every step.
   const run = useCallback(
-    async (text: string): Promise<Payload | null> => {
+    async (text: string, into?: Slot): Promise<Payload | null> => {
       const result = parse(text)
       if (!result.ok) {
-        setFailure(result.failure)
+        // Inside a case the failure belongs to its own step, so the plan can
+        // strike that command out and leave the rest of the sequence honest.
+        if (into) {
+          pushInto(into, { state: "failed" })
+        } else {
+          setFailure(result.failure)
+        }
         return null
       }
 
       setFailure(null)
       const { spec, target, cacheExtra, url, label } = result.command
+      const land = (text: string, payload: Payload) => {
+        if (!into) {
+          push(text, payload)
+          return
+        }
+        nextId.current += 1
+        pushInto(into, { state: "done", id: nextId.current, label: text, payload })
+      }
 
       if (spec.name === "HELP") {
         const payload = helpPayload()
-        push(label, payload)
+        land(label, payload)
         return payload
       }
 
       const key = cacheKey(spec.name, target, cacheExtra)
       const hit = readCache(key)
       if (hit) {
-        push(label, hit)
+        land(label, hit)
         return hit
       }
 
-      setStatus("running")
+      if (into === undefined) {
+        setStatus("running")
+      }
       try {
         const response = await fetch(url, { headers: { accept: "application/json" } })
         const payload = (await response.json()) as Payload
         writeCache(key, payload)
-        push(label, payload)
+        land(label, payload)
         return payload
       } catch (error) {
-        setFailure({
-          input: label,
-          message: error instanceof Error ? error.message : "the request failed",
-          hint: "the answer is not being shown as partial. try again",
-        })
+        if (into) {
+          pushInto(into, { state: "failed" })
+        } else {
+          setFailure({
+            input: label,
+            message: error instanceof Error ? error.message : "the request failed",
+            hint: "the answer is not being shown as partial. try again",
+          })
+        }
         return null
       } finally {
-        setStatus("idle")
+        if (into === undefined) {
+          setStatus("idle")
+        }
       }
     },
-    [push]
+    [push, pushInto]
   )
 
-  useWebMcp(run)
+  // One question, several lookups, one case file.
+  //
+  // The steps run in sequence rather than in parallel on purpose. Each one
+  // appears as it lands, so a person sees the case being built and can start
+  // reading the first screen while the fourth is still in flight — which is the
+  // whole reason this renders onto a page instead of returning a summary.
+  const investigate = useCallback(
+    async (question: string, target: string, planned: string[]) => {
+      nextId.current += 1
+      const caseId = nextId.current
+      setEntries((current) => [
+        { kind: "case" as const, id: caseId, question, target, planned, steps: [] },
+        ...current,
+      ].slice(0, 12))
+
+      setFailure(null)
+
+      const found: { command: string; payload: Payload }[] = []
+      for (const [index, command] of planned.entries()) {
+        const payload = await run(command, { caseId, index })
+        if (payload) {
+          found.push({ command, payload })
+        }
+      }
+      return found
+    },
+    [run]
+  )
+
+  useWebMcp(run, investigate)
 
   const submit = useCallback(async () => {
     const text = input.trim()
@@ -218,13 +309,19 @@ export default function Page() {
         ) : null}
 
       {/* The landing and the skeleton are the same slot: at most one is ever on
-          screen, and each is replaced by the other or by an answer. They share
-          one AnimatePresence so the swap is a crossfade rather than a cut.
-          popLayout is the load-bearing part: it takes the leaving element out
-          of flow so its replacement gets the space in the same frame. Without
-          it both are mounted for the length of the exit, the page is briefly a
-          thousand pixels tall, and the collapse it was meant to smooth just
-          happens later. Nothing animates in; only out. */}
+          screen. The skeleton still animates out, because it is replaced by the
+          answer it was standing in for and a cut there is jarring.
+
+          The landing does not, and used to. Its exit stranded it: motion's
+          popLayout takes the leaving element out of flow, and when the exit
+          never completes — which it reliably does not in development, and
+          eventually but not promptly in production — the landing sits at
+          position absolute and full opacity on top of the answer underneath it.
+          An investigation made it obvious, because a case file is tall and the
+          overlap is the whole screen, but it was already happening to every
+          query. A 160ms fade is not worth a landing page printed over the
+          evidence, so this unmounts instead: no exit, no overlap window at
+          all. */}
         <div className="relative">
           <AnimatePresence mode="popLayout" initial={false}>
             {status === "running" ? (
@@ -236,24 +333,20 @@ export default function Page() {
               >
                 <ScreenSkeleton />
               </motion.div>
-            ) : entries.length === 0 ? (
-              <motion.div
-                key="landing"
-                // Opacity alone when reduced motion is asked for, and never the
-                // shared graphTransition, which returns duration 0 and would give
-                // those users the abrupt swap this exists to remove.
-                exit={reduce ? { opacity: 0 } : { opacity: 0, y: -8 }}
-                transition={{ duration: reduce ? 0.1 : 0.16, ease: easeOutCubic }}
-              >
-                <Landing
-                  onPick={(example) => {
-                    setInput(example)
-                    focus()
-                  }}
-                />
-              </motion.div>
             ) : null}
           </AnimatePresence>
+
+          {resting ? (
+            <Landing
+              onPick={(example) => {
+                setInput(example)
+                focus()
+              }}
+              onInvestigate={(investigation, target) => {
+                void investigate(investigation.question, target, investigation.steps(target))
+              }}
+            />
+          ) : null}
         </div>
       </div>
 
@@ -261,9 +354,19 @@ export default function Page() {
           its pt-12, which is 48px of nothing under the landing page. */}
       {entries.length > 0 ? (
         <div className="flex flex-col gap-20 pt-12">
-          {entries.map((entry) => (
-            <Screen key={entry.id} payload={entry.payload} />
-          ))}
+          {entries.map((entry) =>
+            entry.kind === "case" ? (
+              <CaseFile
+                key={entry.id}
+                question={entry.question}
+                target={entry.target}
+                steps={entry.steps}
+                planned={entry.planned}
+              />
+            ) : (
+              <Screen key={entry.id} payload={entry.payload} />
+            )
+          )}
         </div>
       ) : null}
     </main>
@@ -295,7 +398,17 @@ function ScreenSkeleton() {
   )
 }
 
-const STARTERS = ["TLS github.com", "MAIL github.com", "RDAP example.com", "PROP cloudflare.com"]
+// A domain each investigation has something real to say about, so the landing
+// demonstrates the feature rather than describing it. A person clicking one
+// gets the case run against this; an agent runs the same case against theirs,
+// which is the difference the tool exists to make.
+const SAMPLE: Record<string, string> = {
+  mail: "github.com",
+  dns: "cloudflare.com",
+  tls: "stripe.com",
+  reachability: "cloudflare.com",
+  agents: "vercel.com",
+}
 
 // The landing is built out of the same dashed frames an answer is built out of,
 // so the first thing on screen is already an example of what the tool puts
@@ -313,12 +426,60 @@ const STARTERS = ["TLS github.com", "MAIL github.com", "RDAP example.com", "PROP
 // a tall one just reads as broken. Stretching is only the backstop though: the
 // commands frame is laid out two families wide so its natural height already
 // lands close to the column beside it.
-function Landing({ onPick }: { onPick: (example: string) => void }) {
+function Landing({
+  onPick,
+  onInvestigate,
+}: {
+  onPick: (example: string) => void
+  onInvestigate: (investigation: Investigation, target: string) => void
+}) {
   const [hovered, setHovered] = useState<CommandSpec | null>(null)
   const families = Array.from(new Set(COMMANDS.map((spec) => spec.family)))
 
   return (
     <section className="grid grid-cols-1 gap-6 pt-8 lg:grid-cols-3">
+      {/* First, and full width, because it is the thing a person arrives with.
+          Nobody debugging mail knows they need four lookups; they know the
+          symptom. Every command below answers one question, and these are the
+          questions people actually have. */}
+      <Frame title="investigations" className="lg:col-span-3">
+        <div className="flex flex-col gap-5">
+          <div className="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+            {INVESTIGATIONS.map((investigation) => {
+              const target = SAMPLE[investigation.id]
+              return (
+                <button
+                  key={investigation.id}
+                  type="button"
+                  onClick={() => onInvestigate(investigation, target)}
+                  className="group -mx-1.5 flex min-w-0 flex-col gap-1 rounded px-1.5 py-1 text-left hover:bg-muted"
+                >
+                  <span className="text-pretty text-foreground group-hover:text-graph-accent">
+                    {investigation.question}?
+                  </span>
+                  {/* The verbs, and the target once. Spelling the target into
+                      every step truncated the line at three columns and said
+                      the same word four times to buy it. */}
+                  <span className="truncate text-xs text-graph-muted">
+                    <span className="text-graph-accent">{target}</span>{" "}
+                    {investigation
+                      .steps(target)
+                      .map((step) => step.split(" ")[0].toLowerCase())
+                      .join(" · ")}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+
+          <p className="max-w-3xl text-xs text-pretty text-graph-muted">
+            One question, several lookups, every screen kept under the question that produced it.
+            Click one to watch a case build against the domain named beneath it — or ask an agent
+            in the page, which can point the same investigation at yours.
+          </p>
+        </div>
+      </Frame>
+
       <Frame title="commands" className="lg:col-span-2">
         <div className="flex h-full flex-col justify-between gap-5">
           <div className="grid grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-3">
@@ -367,29 +528,12 @@ function Landing({ onPick }: { onPick: (example: string) => void }) {
       </Frame>
 
       <div className="flex flex-col gap-6">
-        <Frame title="start here">
-          <ul className="flex flex-col gap-1">
-            {STARTERS.map((example) => {
-              const [verb, ...rest] = example.split(" ")
-              return (
-                <li key={example}>
-                  <button
-                    type="button"
-                    onClick={() => onPick(example)}
-                    className="group -mx-1.5 flex w-full items-baseline gap-2 rounded px-1.5 py-1 text-left hover:bg-muted"
-                  >
-                    <span className="text-graph-accent">{verb.toLowerCase()}</span>
-                    <span className="min-w-0 truncate text-graph-muted group-hover:text-foreground">
-                      {rest.join(" ")}
-                    </span>
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        </Frame>
+        {/* "start here" used to sit above this with four single commands in it.
+            The investigations frame is a better version of the same idea — a
+            question rather than a verb — so keeping both was two answers to
+            "what do I do first".
 
-        {/* The list is a constant in the codebase, not something a query can
+            The list is a constant in the codebase, not something a query can
             point somewhere else, so naming it here is a fact about the tool
             rather than a boast about it.
 

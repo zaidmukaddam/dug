@@ -106,6 +106,22 @@ func Get(ctx context.Context, rawURL string) *Response {
 // the point: the SEO and AEO screens ask for markdown and need that Accept to
 // actually be sent.
 func GetWithHeaders(ctx context.Context, rawURL string, extra map[string]string) *Response {
+	return get(ctx, rawURL, extra, MaxBody)
+}
+
+// GetLimited is Get with its own body ceiling.
+//
+// MaxBody exists so that one hostile response cannot become one screen's worth
+// of memory, and 256KB is the right size for anything meant to be read. It is
+// the wrong size for looking inside a javascript bundle: they are routinely
+// megabytes, and truncating one is how the WEBMCP command came to report that
+// dug's own page does not reference the api it registers 26 tools with. The
+// marker was 300KB past the cut.
+func GetLimited(ctx context.Context, rawURL string, maxBody int) *Response {
+	return get(ctx, rawURL, nil, maxBody)
+}
+
+func get(ctx context.Context, rawURL string, extra map[string]string, maxBody int) *Response {
 	response := &Response{URL: rawURL}
 	overall := time.Now()
 	current := rawURL
@@ -185,7 +201,7 @@ func GetWithHeaders(ctx context.Context, rawURL string, extra map[string]string)
 		response.Timing.TTFBMS = entry.MS
 
 		// Each hop overwrites the last, so these describe the body kept.
-		body, truncated, readErr := readBody(reply.Body)
+		body, truncated, readErr := readBody(reply.Body, maxBody)
 		reply.Body.Close()
 		transport.CloseIdleConnections()
 		response.Body, response.Truncated, response.BodyErr = body, truncated, ""
@@ -224,13 +240,13 @@ func GetWithHeaders(ctx context.Context, rawURL string, extra map[string]string)
 	return response
 }
 
-// readBody caps the body at MaxBody, reading one byte past the cap so an
+// readBody caps the body at limit, reading one byte past the cap so an
 // oversized body is known to be cut rather than turning up later as content
 // that will not parse.
-func readBody(from io.Reader) (body []byte, truncated bool, err error) {
-	body, err = io.ReadAll(io.LimitReader(from, MaxBody+1))
-	if len(body) > MaxBody {
-		return body[:MaxBody], true, err
+func readBody(from io.Reader, limit int) (body []byte, truncated bool, err error) {
+	body, err = io.ReadAll(io.LimitReader(from, int64(limit)+1))
+	if len(body) > limit {
+		return body[:limit], true, err
 	}
 	return body, false, err
 }
