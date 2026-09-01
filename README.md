@@ -2,7 +2,7 @@
 
 [dug.sh](https://dug.sh), a monospace, command-driven terminal for domain and network diagnostics. Every screen leads with the answer in a sentence; the graphs below it are the evidence. Nothing is precomputed or stored between queries.
 
-The same twenty-four commands are served four ways from one implementation: as a browser app, as plain text to `curl`, as an MCP server, and as WebMCP tools on the page itself. An agent in the tab calls a tool and the answer renders on screen, so the person watching reads the same evidence the agent got, not a transcript of what it claims to have found.
+The same twenty-five commands are served four ways from one implementation: as a browser app, as plain text to `curl`, as an MCP server, and as WebMCP tools on the page itself. An agent in the tab calls a tool and the answer renders on screen, so the person watching reads the same evidence the agent got, not a transcript of what it claims to have found.
 
 ```bash
 curl dug.sh/tls/github.com          # a terminal gets text
@@ -11,7 +11,7 @@ curl dug.sh/aeo/example.com         # …the same url, the same answer
 
 ```js
 // an agent in the page gets tools, and its answers land on screen
-const tools = await document.modelContext.getTools()   // 24
+const tools = await document.modelContext.getTools()   // 27
 await document.modelContext.executeTool(tool, '{"target":"github.com"}')
 ```
 
