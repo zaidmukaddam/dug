@@ -7,12 +7,62 @@
 // runs it; the list below is only the landing's worked examples, for someone who
 // arrived without one.
 
+import type { ParseFailure } from "@/app/commands/grammar"
+
 export type Investigation = {
   id: string
   question: string
   // In the order someone who knew what they were doing would run them. A case
   // reads top to bottom.
   steps: (target: string) => string[]
+}
+
+// `WHY <topic> <target>` at the prompt, so a person can run one against their
+// own domain rather than only against the landing's examples.
+//
+// Handled before parse() rather than added to the command grammar, because it
+// is not a command: there is no endpoint that could answer it. One request
+// returns one screen, and an investigation is several — which is the same
+// reason it is not on the MCP server either.
+// null means this is not a WHY at all and belongs to parse(). A failure means it
+// is one and is wrong, which has to be said here: falling through would report
+// "why is not a command" for a mistyped topic, when why is exactly what it is.
+export type InvestigationMatch =
+  | { ok: true; investigation: Investigation; target: string }
+  | { ok: false; failure: ParseFailure }
+
+export function matchInvestigation(text: string): InvestigationMatch | null {
+  const trimmed = text.trim()
+  const [verb, topic, ...rest] = trimmed.split(/\s+/)
+  if (verb?.toUpperCase() !== "WHY") {
+    return null
+  }
+
+  const topics = INVESTIGATIONS.map((entry) => entry.id).join(", ")
+  const investigation = INVESTIGATIONS.find((entry) => entry.id === topic?.toLowerCase())
+  if (!investigation) {
+    return {
+      ok: false,
+      failure: {
+        input: trimmed,
+        message: topic ? `there is no ${topic} investigation` : "why needs something to investigate",
+        hint: `try one of ${topics}, as in WHY mail example.com`,
+      },
+    }
+  }
+
+  const target = rest.join(" ").trim()
+  if (!target) {
+    return {
+      ok: false,
+      failure: {
+        input: trimmed,
+        message: `why ${investigation.id} needs a domain`,
+        hint: `WHY ${investigation.id} example.com`,
+      },
+    }
+  }
+  return { ok: true, investigation, target }
 }
 
 export const INVESTIGATIONS: Investigation[] = [

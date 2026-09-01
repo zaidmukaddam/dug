@@ -79,6 +79,44 @@ func TestEveryInvestigationHasALandingSample(t *testing.T) {
 	}
 }
 
+// WHY is answered before parse() and is not in the command grammar, so nothing
+// in the grammar guards it. What it must not do is swallow input: a topic that
+// does not exist, or a topic with no target, has to fall through to the normal
+// parse and get a real error rather than quietly doing nothing.
+func TestWhyFallsThroughWhenItIsNotAnInvestigation(t *testing.T) {
+	body := read(t, repoRoot(t), "lib", "investigations.ts")
+
+	match := strings.Index(body, "export function matchInvestigation")
+	if match == -1 {
+		t.Fatal("matchInvestigation is gone, so WHY at the prompt does nothing")
+	}
+	fn := body[match:]
+	if end := strings.Index(fn, "\nexport "); end != -1 {
+		fn = fn[:end]
+	}
+
+	// Exactly one null: the verb is not WHY, so it belongs to parse. A mistyped
+	// topic must come back as a failure instead, or the prompt reports "why is
+	// not a command" about the one word that was right.
+	if got := strings.Count(fn, "return null"); got != 1 {
+		t.Errorf("matchInvestigation returns null %d times, want 1 — only a non-WHY verb falls through", got)
+	}
+	for _, guard := range []string{"!investigation", "!target"} {
+		if !strings.Contains(fn, guard) {
+			t.Errorf("matchInvestigation does not handle %s", guard)
+		}
+	}
+	if strings.Count(fn, "ok: false") != 2 {
+		t.Error("matchInvestigation does not report both an unknown topic and a missing target")
+	}
+
+	// The prompt has to reach it before parse, or WHY is just an unknown command.
+	page := read(t, repoRoot(t), "app", "page.tsx")
+	if strings.Index(page, "matchInvestigation(text)") > strings.Index(page, "if (await run(text))") {
+		t.Error("submit calls run before matchInvestigation, so WHY never reaches an investigation")
+	}
+}
+
 // The tool that only exists in the page. If it stops being registered the
 // investigations are still clickable by a person and invisible to an agent,
 // which is the half that makes them worth having.

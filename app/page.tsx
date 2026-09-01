@@ -19,7 +19,7 @@ import { Screen } from "@/app/screens/screen"
 import { ThemeToggle } from "@/components/theme-provider"
 import { cacheKey, cacheSize, readCache, writeCache, type Payload } from "@/lib/cache"
 import { easeOutCubic } from "@/lib/graph-motion"
-import { INVESTIGATIONS, type Investigation } from "@/lib/investigations"
+import { INVESTIGATIONS, type Investigation, matchInvestigation } from "@/lib/investigations"
 import { RESOLVERS } from "@/lib/resolvers"
 import { cn } from "@/lib/utils"
 import { useWebMcp } from "@/lib/webmcp"
@@ -243,10 +243,30 @@ export default function Page() {
     setHistory((current) => [text, ...current.filter((item) => item !== text)].slice(0, 50))
     setCursor(-1)
 
+    // WHY is answered here rather than by parse, because it is not a command:
+    // no endpoint returns several screens, so there is nothing for the grammar
+    // to route it to.
+    const why = matchInvestigation(text)
+    if (why) {
+      if (!why.ok) {
+        setFailure(why.failure)
+        return
+      }
+      setInput("")
+      setFailure(null)
+      await investigate(
+        why.investigation.question,
+        why.target,
+        why.investigation.steps(why.target),
+        "you"
+      )
+      return
+    }
+
     if (await run(text)) {
       setInput("")
     }
-  }, [input, run, status])
+  }, [input, investigate, run, status])
 
   // Shell history, only reachable when the completion list is closed. The
   // palette decides which of the two owns the arrow keys.
@@ -490,15 +510,14 @@ function Landing({
                   <span className="text-pretty text-foreground group-hover:text-graph-accent">
                     {investigation.question}?
                   </span>
-                  {/* The verbs, and the target once. Spelling the target into
-                      every step truncated the line at three columns and said
-                      the same word four times to buy it. */}
+                  {/* The command that runs it, so clicking teaches the syntax
+                      for running the same thing against your own domain. */}
                   <span className="truncate text-xs text-graph-muted">
-                    <span className="text-graph-accent">{target}</span>{" "}
+                    <span className="text-graph-accent">why {investigation.id}</span> {target} ·{" "}
                     {investigation
                       .steps(target)
                       .map((step) => step.split(" ")[0].toLowerCase())
-                      .join(" · ")}
+                      .join(" ")}
                   </span>
                 </button>
               )
@@ -507,8 +526,11 @@ function Landing({
 
           <p className="max-w-3xl text-xs text-pretty text-graph-muted">
             One question, several lookups, every screen kept under the question that produced it.
-            Click one to watch the case build against the domain beneath it. An agent in the page
-            can run the same thing against yours, and pick the lookups itself.
+            Click one, or type <span className="text-foreground">why mail yourdomain.com</span> to
+            point it at your own — which means knowing there is a topic called{" "}
+            <span className="text-foreground">mail</span>. An agent in this page does not pick from
+            this list and you do not have to learn it: say the symptom, and it writes its own
+            sequence out of the {COMMANDS.length} commands below.
           </p>
         </div>
       </Frame>

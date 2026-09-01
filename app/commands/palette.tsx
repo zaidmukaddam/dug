@@ -217,6 +217,8 @@ export function Palette({
                 </span>
               </>
             ) : null}
+            {" · "}
+            <span className="font-mono">why mail example.com</span> investigates
           </>
         )}
       </p>
