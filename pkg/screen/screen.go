@@ -295,10 +295,11 @@ func writePayload(
 	// RFC 8631: the machine description of this endpoint, and the page a person
 	// would read instead. Discoverable from any response rather than only from
 	// the one document that lists them.
-	w.Header().Set("Link",
-		`</openapi.json>; rel="service-desc"; type="application/json", `+
-			`</developers>; rel="service-doc"; type="text/html", `+
-			`</llms.txt>; rel="describedby"; type="text/plain"`)
+	//
+	// The same four relations next.config.ts sets on the html pages, so the two
+	// halves of the site describe themselves identically. pkg/wiring fails if
+	// they drift.
+	w.Header().Set("Link", ServiceLinks)
 
 	// A refusal is about this request, not about the world, so it must not sit
 	// in a shared cache under the same key as a real answer.

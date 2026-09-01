@@ -30,3 +30,17 @@ func Origin(r *http.Request) string {
 func isLocal(host string) bool {
 	return strings.HasPrefix(host, "127.0.0.1") || strings.HasPrefix(host, "localhost")
 }
+
+// ServiceLinks is the RFC 8631 discovery set, sent on every response.
+//
+// Relative refs on purpose: the same string is correct on a preview deployment,
+// on localhost and in production, which an absolute one would not be.
+//
+// service-desc is the machine description, service-doc the page a person reads,
+// and describedby the two documents an agent reads first — llms.txt for the
+// prose and the AI catalog for the protocols. next.config.ts sets the identical
+// set on the html pages; pkg/wiring fails if the two lists drift.
+const ServiceLinks = `</openapi.json>; rel="service-desc"; type="application/vnd.oai.openapi+json", ` +
+	`</developers>; rel="service-doc"; type="text/html", ` +
+	`</llms.txt>; rel="describedby"; type="text/plain", ` +
+	`</.well-known/ai-catalog.json>; rel="describedby"; type="application/ai-catalog+json"`

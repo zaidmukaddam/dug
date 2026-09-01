@@ -300,9 +300,12 @@ func listAfter(t *testing.T, body, marker string) map[string]bool {
 	return found
 }
 
-// The relations are set in two places for two different readers: as a Link
-// header for a client that reads headers, and as <link> elements for a crawler
-// that keeps the body and drops them. They have to name the same documents.
+// The relations are set in three places for two different readers: the Go
+// handlers set them on every api response, next.config.ts sets them on the html
+// pages, and the layout repeats them as <link> elements for a crawler that
+// keeps the body and drops the headers. All three have to name the same
+// documents with the same media types — the api half advertised openapi.json as
+// application/json for a while after it stopped being served as that.
 func TestServiceLinksAreSetInBothPlaces(t *testing.T) {
 	root := repoRoot(t)
 	config := read(t, root, "next.config.ts")
@@ -321,6 +324,17 @@ func TestServiceLinksAreSetInBothPlaces(t *testing.T) {
 		}
 		if !strings.Contains(layout, `rel="`+want.rel+`" href="`+want.href+`"`) {
 			t.Errorf("app/layout.tsx has no <link rel=%q href=%q>", want.rel, want.href)
+		}
+		if !strings.Contains(screen.ServiceLinks, `<`+want.href+`>; rel="`+want.rel+`"`) {
+			t.Errorf("screen.ServiceLinks sends no rel=%q for %s", want.rel, want.href)
+		}
+	}
+
+	// Not just the same relations: the same media types. The header is the only
+	// thing telling a client what it will get before it fetches.
+	for _, header := range strings.Split(screen.ServiceLinks, ", ") {
+		if !strings.Contains(config, strings.TrimSpace(header)) {
+			t.Errorf("next.config.ts does not send the Link value the api sends: %s", header)
 		}
 	}
 }
