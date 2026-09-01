@@ -187,6 +187,10 @@ pace against, and it is not a security control.`)
     /openapi.json                 OpenAPI 3.1 for every command above
     /.well-known/api-catalog      RFC 9727 linkset, one anchor per command
     /.well-known/ai-catalog.json  AI Catalog 1.0, the surfaces typed by protocol
+    /.well-known/mcp/server-card.json
+                                  SEP-1649 server card: protocol version,
+                                  transport, capabilities and every tool, so a
+                                  client can decide before it connects
     /server.json                  MCP server manifest: name, version, transport
     /mcp                          MCP server, Streamable HTTP, one tool per command
     /developers                   the same surface written for a person
@@ -214,8 +218,16 @@ the response is text/markdown rather than html, with Vary: Accept set.
 endpoint, always there, serving every command above as its own tool. It is POST
 only: a GET is answered 405, because nothing here is server-initiated and there
 is no stream to open. That is the transport behaving as specified, not an
-endpoint that is down — confirm it with a POST, or read /server.json, which
-names the same URL and needs no request body.
+endpoint that is down — confirm it with a POST, or read the server card, which
+needs no request body.
+
+/.well-known/mcp/server-card.json is worth reading before connecting. It carries
+what initialize and tools/list would have returned — the protocol version, the
+transport, the capabilities, that no authentication is required, and the full
+tool list with input schemas — so you can decide whether this server is worth a
+connection, and check every tool description, without opening one. The list is
+static rather than "dynamic": the tool set is fixed at build time and cannot
+change under you.
 
 The browser app registers the same commands as WebMCP tools on
 document.modelContext, so an agent already in the page calls them without

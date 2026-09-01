@@ -49,6 +49,7 @@ const API_ENDPOINTS = new Set([
   "/api/catalog",
   "/api/aicatalog",
   "/api/server",
+  "/api/servercard",
 ])
 
 // The contract this surface answers under. Mirrors screen.APIVersion in Go;
@@ -178,6 +179,7 @@ const PASS_THROUGH = new Set([
   "/server.json",
   "/.well-known/api-catalog",
   "/.well-known/ai-catalog.json",
+  "/.well-known/mcp/server-card.json",
   "/robots.txt",
   "/sitemap.xml",
   "/opengraph-image",

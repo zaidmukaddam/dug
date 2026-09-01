@@ -62,6 +62,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			"anchor": base + "/mcp",
 			"describedby": []any{
 				object{
+					"href":  base + "/.well-known/mcp/server-card.json",
+					"type":  "application/json",
+					"title": "MCP server card: protocol version, transport, capabilities and every tool",
+				},
+				object{
 					"href":  base + "/server.json",
 					"type":  "application/json",
 					"title": "MCP server manifest: name, version and transport",

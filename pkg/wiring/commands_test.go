@@ -112,9 +112,13 @@ func TestEveryCommandHasAnMCPRoute(t *testing.T) {
 // there and comes back "unknown tool". Server against browser is louder but
 // worse, because an agent inside the page and one outside it end up calling
 // differently named tools for the same command.
+//
+// The first two now live together in pkg/mcpx, which is a real improvement —
+// they are two lines apart rather than two files apart. They are still both
+// checked, because "adjacent" is not "the same string".
 var (
-	mcpListedPrefix  = regexp.MustCompile(`"name":\s*"([a-z]+)_"\s*\+\s*strings\.ToLower`)
-	mcpTrimmedPrefix = regexp.MustCompile(`strings\.TrimPrefix\(params\.Name,\s*"([a-z]+)_"\)`)
+	mcpListedPrefix  = regexp.MustCompile(`return "([a-z]+)_"\s*\+\s*strings\.ToLower`)
+	mcpTrimmedPrefix = regexp.MustCompile(`strings\.TrimPrefix\(name,\s*"([a-z]+)_"\)`)
 	webMcpPrefix     = regexp.MustCompile("`([a-z]+)_\\$\\{spec\\.name\\.toLowerCase\\(\\)\\}`")
 )
 
@@ -129,17 +133,17 @@ func TestMCPToolPrefixesAgree(t *testing.T) {
 		return match[1]
 	}
 
-	mcp := read(t, root, "api", "mcp", "index.go")
-	listed := prefix("name api/mcp lists", mcpListedPrefix, mcp)
-	trimmed := prefix("prefix api/mcp trims to dispatch", mcpTrimmedPrefix, mcp)
+	mcp := read(t, root, "pkg", "mcpx", "mcpx.go")
+	listed := prefix("name pkg/mcpx builds", mcpListedPrefix, mcp)
+	trimmed := prefix("prefix pkg/mcpx trims to dispatch", mcpTrimmedPrefix, mcp)
 	browser := prefix("name lib/webmcp.ts registers", webMcpPrefix, read(t, root, "lib", "webmcp.ts"))
 
 	if listed != trimmed {
-		t.Errorf("api/mcp lists tools as %s_* but dispatches by trimming %s_, so every tools/call fails as an unknown tool",
+		t.Errorf("pkg/mcpx names tools %s_* but dispatches by trimming %s_, so every tools/call fails as an unknown tool",
 			listed, trimmed)
 	}
 	if listed != browser {
-		t.Errorf("api/mcp registers %s_* and lib/webmcp.ts registers %s_*", listed, browser)
+		t.Errorf("pkg/mcpx registers %s_* and lib/webmcp.ts registers %s_*", listed, browser)
 	}
 }
 

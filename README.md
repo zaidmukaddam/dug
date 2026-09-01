@@ -71,6 +71,7 @@ hand one client's representation to another.
 | `/openapi.json` | OpenAPI 3.1, one operation per command |
 | `/.well-known/api-catalog` | RFC 9727 linkset, one anchor per command |
 | `/.well-known/ai-catalog.json` | AI Catalog 1.0, both surfaces typed by protocol |
+| `/.well-known/mcp/server-card.json` | SEP-1649 server card: every tool, without connecting |
 | `/server.json` | MCP server manifest, the registry's own shape |
 | `/mcp` | MCP server, Streamable HTTP, one tool per command |
 | `/deprecation` | How a route is retired, and how much notice you get |
@@ -142,7 +143,9 @@ api/openapi       OpenAPI 3.1, generated from pkg/commands
 api/catalog       RFC 9727 api-catalog, one anchor per command
 api/aicatalog     AI Catalog, the mcp and rest surfaces typed by protocol
 api/server        server.json, the MCP registry manifest
+api/servercard    the SEP-1649 server card, generated from pkg/mcpx
 api/mcp           MCP server, dispatching to the other handlers
+pkg/mcpx          the server identity and tool list the card and mcp share
 pkg/guard         address validation, used by every dialer
 pkg/commands      the grammar, mirrored by app/commands/grammar.ts
 pkg/screen        the block envelope, and its json and text renderings

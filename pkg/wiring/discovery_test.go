@@ -12,13 +12,16 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"regexp"
 	"strings"
 	"testing"
 
 	aicatalogapi "github.com/zaidmukaddam/dug/api/aicatalog"
 	catalogapi "github.com/zaidmukaddam/dug/api/catalog"
+	mcpapi "github.com/zaidmukaddam/dug/api/mcp"
 	serverapi "github.com/zaidmukaddam/dug/api/server"
+	servercardapi "github.com/zaidmukaddam/dug/api/servercard"
 	"github.com/zaidmukaddam/dug/pkg/commands"
 	"github.com/zaidmukaddam/dug/pkg/screen"
 )
@@ -158,6 +161,93 @@ func TestAICatalogCapabilitiesMatchTheCommandSet(t *testing.T) {
 	}
 }
 
+// The card's whole promise is that a client can trust it instead of connecting.
+// So every claim it makes has to be the claim the server would make, and the
+// only way to keep that true is for both to come from pkg/mcpx — which this
+// checks by comparing the card against a live initialize and tools/list.
+func TestServerCardMatchesWhatTheServerAnswers(t *testing.T) {
+	card, result := fetchJSON(t, servercardapi.Handler, "https://dug.sh/.well-known/mcp/server-card.json")
+
+	// SEP-1649 requires application/json specifically, and CORS, because a
+	// browser client reading the card cross-origin is what it is for.
+	if got := result.Header.Get("Content-Type"); got != "application/json" {
+		t.Errorf("server card content type is %q, the SEP requires application/json", got)
+	}
+	if got := result.Header.Get("Access-Control-Allow-Origin"); got != "*" {
+		t.Errorf("server card sends Access-Control-Allow-Origin %q, the SEP requires it", got)
+	}
+
+	// The fields the SEP marks required. $schema is deliberately absent: the
+	// url the proposal names has never been published.
+	for _, field := range []string{"version", "protocolVersion", "serverInfo", "transport", "capabilities"} {
+		if _, ok := card[field]; !ok {
+			t.Errorf("server card has no %q, which the SEP requires", field)
+		}
+	}
+	if _, ok := card["$schema"]; ok {
+		t.Error("server card cites a $schema; the url the SEP names does not resolve, so it must stay out")
+	}
+
+	// Now the part that matters: does it agree with the server?
+	initialize := rpc(t, `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`)
+
+	if card["protocolVersion"] != initialize["protocolVersion"] {
+		t.Errorf("card says protocol %v, the server answers %v", card["protocolVersion"], initialize["protocolVersion"])
+	}
+	if !reflect.DeepEqual(card["serverInfo"], initialize["serverInfo"]) {
+		t.Errorf("card serverInfo %v does not match the server's %v", card["serverInfo"], initialize["serverInfo"])
+	}
+	if !reflect.DeepEqual(card["capabilities"], initialize["capabilities"]) {
+		t.Errorf("card capabilities %v do not match the server's %v", card["capabilities"], initialize["capabilities"])
+	}
+	if card["instructions"] != initialize["instructions"] {
+		t.Error("card instructions do not match the server's")
+	}
+
+	// The tool list is static rather than the reserved "dynamic", so it has to
+	// be the same list, not merely the same length.
+	listed := rpc(t, `{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}`)
+	if !reflect.DeepEqual(card["tools"], listed["tools"]) {
+		cardTools, _ := card["tools"].([]any)
+		serverTools, _ := listed["tools"].([]any)
+		t.Errorf("card advertises %d tools that differ from the %d the server lists",
+			len(cardTools), len(serverTools))
+	}
+
+	// The transport has to point somewhere that answers.
+	transport, _ := card["transport"].(map[string]any)
+	if transport["type"] != "streamable-http" {
+		t.Errorf("card transport type is %v, want streamable-http", transport["type"])
+	}
+	if transport["endpoint"] != "/mcp" {
+		t.Errorf("card transport endpoint is %v, want /mcp", transport["endpoint"])
+	}
+}
+
+// One initialize or tools/list call against the real handler.
+func rpc(t *testing.T, body string) map[string]any {
+	t.Helper()
+	request := httptest.NewRequest(http.MethodPost, "https://dug.sh/mcp", strings.NewReader(body))
+	request.Header.Set("Content-Type", "application/json")
+
+	recorder := httptest.NewRecorder()
+	mcpapi.Handler(recorder, request)
+
+	var response struct {
+		Result map[string]any `json:"result"`
+		Error  *struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.NewDecoder(recorder.Result().Body).Decode(&response); err != nil {
+		t.Fatalf("decoding the rpc response: %v", err)
+	}
+	if response.Error != nil {
+		t.Fatalf("the server refused the call: %s", response.Error.Message)
+	}
+	return response.Result
+}
+
 // The catalog is the one document that is supposed to name every other one. It
 // missed the two added alongside it once already, which is how a discovery
 // document quietly stops being a discovery document.
@@ -170,6 +260,7 @@ func TestCatalogNamesTheDiscoveryDocuments(t *testing.T) {
 		"https://dug.sh/openapi.json",
 		"https://dug.sh/llms.txt",
 		"https://dug.sh/.well-known/ai-catalog.json",
+		"https://dug.sh/.well-known/mcp/server-card.json",
 		"https://dug.sh/server.json",
 		"https://dug.sh/mcp",
 	} {
@@ -190,6 +281,7 @@ func TestDiscoveryPathsAreRewritten(t *testing.T) {
 		{"/openapi.json", "/api/openapi"},
 		{"/.well-known/api-catalog", "/api/catalog"},
 		{"/.well-known/ai-catalog.json", "/api/aicatalog"},
+		{"/.well-known/mcp/server-card.json", "/api/servercard"},
 		{"/server.json", "/api/server"},
 		{"/mcp", "/api/mcp"},
 	} {
@@ -207,7 +299,7 @@ func TestDiscoveryPathsAreRewritten(t *testing.T) {
 func TestProxyKnowsEveryDiscoveryEndpoint(t *testing.T) {
 	proxy := read(t, repoRoot(t), "proxy.ts")
 
-	for _, endpoint := range []string{"/api/catalog", "/api/aicatalog", "/api/server", "/api/mcp"} {
+	for _, endpoint := range []string{"/api/catalog", "/api/aicatalog", "/api/server", "/api/servercard", "/api/mcp"} {
 		if !strings.Contains(proxy, `"`+endpoint+`"`) {
 			t.Errorf("proxy.ts API_ENDPOINTS does not list %s, so it answers 404 there", endpoint)
 		}

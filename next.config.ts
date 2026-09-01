@@ -131,6 +131,9 @@ const nextConfig: NextConfig = {
       // The AI Catalog specification fixes this path the same way RFC 9727
       // fixes the one above.
       { source: "/.well-known/ai-catalog.json", destination: api("/api/aicatalog") },
+      // SEP-1649 fixes this one. The card is what a client would have got from
+      // initialize and tools/list, without the handshake.
+      { source: "/.well-known/mcp/server-card.json", destination: api("/api/servercard") },
       // /mcp is where a client looks for a remote MCP server, and it was a 404
       // here while the server sat at /api/mcp. Same handler, both spellings, so
       // nothing that already hardcoded the long path breaks.

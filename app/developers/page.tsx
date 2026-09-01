@@ -217,6 +217,10 @@ export default function Developers() {
             <DevLink href="/openapi.json" note="openapi 3.1, one operation per command" />
             <DevLink href="/.well-known/api-catalog" note="rfc 9727 linkset" />
             <DevLink href="/.well-known/ai-catalog.json" note="ai catalog, typed by protocol" />
+            <DevLink
+              href="/.well-known/mcp/server-card.json"
+              note="mcp server card, every tool without connecting"
+            />
             <DevLink href="/server.json" note="mcp server manifest" />
             <DevLink href="/mcp" note="mcp over streamable http, post only" />
             <DevLink href="/deprecation" note="how a route is retired" />

@@ -37,9 +37,14 @@ import (
 	tlsapi "github.com/zaidmukaddam/dug/api/tls"
 	vsapi "github.com/zaidmukaddam/dug/api/vs"
 	"github.com/zaidmukaddam/dug/pkg/commands"
+	"github.com/zaidmukaddam/dug/pkg/mcpx"
 )
 
-const protocolVersion = "2025-11-25"
+// The identity, the instructions and the tool list all live in pkg/mcpx now,
+// because /.well-known/mcp/server-card.json publishes the same four things
+// without a handshake and a card that disagreed with this handler would send a
+// client to a server it had already mis-read.
+const protocolVersion = mcpx.ProtocolVersion
 
 var byEndpoint = map[string]http.HandlerFunc{
 	"/api/addr":      addrapi.Handler,
@@ -125,23 +130,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	case "initialize":
 		writeRPC(w, rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{
 			"protocolVersion": protocolVersion,
-			"capabilities":    map[string]any{"tools": map[string]any{}},
+			"capabilities":    mcpx.Capabilities(),
 			"serverInfo": map[string]any{
-				"name":    "dug",
-				"title":   "dug",
-				"version": "1",
+				"name":    mcpx.ServerName,
+				"title":   mcpx.ServerTitle,
+				"version": mcpx.ServerVersion,
 			},
-			"instructions": "Live domain and network diagnostics. Every call is a fresh lookup; " +
-				"nothing is stored between calls. Read the verdict line first, then the evidence. " +
-				"If a result mentions a degraded upstream, part of the answer is missing and the " +
-				"rest still stands.",
+			"instructions": mcpx.Instructions,
 		}})
 
 	case "ping":
 		writeRPC(w, rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{}})
 
 	case "tools/list":
-		writeRPC(w, rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{"tools": toolList()}})
+		writeRPC(w, rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{"tools": mcpx.Tools()}})
 
 	case "tools/call":
 		writeRPC(w, callTool(r, req))
@@ -150,43 +152,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		writeRPC(w, rpcResponse{JSONRPC: "2.0", ID: req.ID,
 			Error: &rpcError{-32601, "method not found: " + req.Method}})
 	}
-}
-
-func toolList() []any {
-	tools := make([]any, 0, len(commands.List))
-	for _, spec := range commands.List {
-		properties := map[string]any{}
-		required := []any{}
-
-		if about := spec.TargetAbout(); about != "" {
-			properties["target"] = map[string]any{"type": "string", "description": about}
-			required = append(required, "target")
-		}
-		for _, param := range spec.Params {
-			properties[param.Name] = map[string]any{"type": "string", "description": param.About}
-			if param.Required {
-				required = append(required, param.Name)
-			}
-		}
-
-		tools = append(tools, map[string]any{
-			"name":  "dug_" + strings.ToLower(spec.Name),
-			"title": spec.Name,
-			"description": spec.Summary + ". Runs live and returns the answer as a sentence " +
-				"followed by the evidence. Example: " + spec.Example,
-			"inputSchema": map[string]any{
-				"type": "object", "properties": properties, "required": required,
-			},
-			"annotations": map[string]any{
-				"readOnlyHint":    true,
-				"destructiveHint": false,
-				// Every command reaches a third party that this tool does not
-				// control, so no result is reproducible from the input alone.
-				"openWorldHint": true,
-			},
-		})
-	}
-	return tools
 }
 
 func callTool(r *http.Request, req rpcRequest) rpcResponse {
@@ -200,7 +165,7 @@ func callTool(r *http.Request, req rpcRequest) rpcResponse {
 		return rpcResponse{JSONRPC: "2.0", ID: req.ID, Error: &rpcError{-32602, "invalid params"}}
 	}
 
-	spec, ok := commands.ByName(strings.ToUpper(strings.TrimPrefix(params.Name, "dug_")))
+	spec, ok := mcpx.SpecFor(params.Name)
 	if !ok {
 		return rpcResponse{JSONRPC: "2.0", ID: req.ID,
 			Error: &rpcError{-32602, "unknown tool: " + params.Name}}

@@ -21,9 +21,8 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
 
-	"github.com/zaidmukaddam/dug/pkg/commands"
+	"github.com/zaidmukaddam/dug/pkg/mcpx"
 	"github.com/zaidmukaddam/dug/pkg/screen"
 )
 
@@ -35,18 +34,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	doc := object{
 		"specVersion": "1.0",
 		"entries": []any{
-			// The MCP server. Typed as a server card because that is the
-			// registered media type for an MCP server's descriptive document,
-			// and /server.json is the only such document here that validates
-			// against a schema that resolves.
+			// The MCP server, pointed at the actual server card now that one is
+			// served. This entry named /server.json while the card did not
+			// exist, which meant the media type here described a shape the
+			// document at the other end was not.
 			object{
 				"identifier":  "urn:air:dug.sh:mcp:dug",
 				"displayName": "dug",
 				"description": "Live domain and network diagnostics over MCP. Every call is a fresh " +
 					"lookup against dns, rdap, tls and routing upstreams; nothing is stored between calls.",
 				"type":         "application/mcp-server-card+json",
-				"url":          base + "/server.json",
-				"capabilities": toolNames(),
+				"url":          base + "/.well-known/mcp/server-card.json",
+				"capabilities": mcpx.ToolNames(),
 				"representativeQueries": []any{
 					"when does the tls certificate for github.com expire",
 					"has my dns change propagated yet",
@@ -66,7 +65,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					"answers in text, json or markdown by content negotiation.",
 				"type":         "application/vnd.oai.openapi+json;version=3.1",
 				"url":          base + "/openapi.json",
-				"capabilities": toolNames(),
+				"capabilities": mcpx.ToolNames(),
 				"representativeQueries": []any{
 					"curl the mx records for a domain",
 					"check a tls certificate chain from a script",
@@ -90,15 +89,4 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "public, s-maxage=86400, stale-while-revalidate=172800")
 	w.WriteHeader(http.StatusOK)
 	w.Write(body)
-}
-
-// The MCP tool names, which are the command names with the server's prefix.
-// Generated rather than listed so a command added to the registry appears here
-// without anyone remembering to add it.
-func toolNames() []any {
-	names := make([]any, 0, len(commands.List))
-	for _, spec := range commands.List {
-		names = append(names, "dug_"+strings.ToLower(spec.Name))
-	}
-	return names
 }

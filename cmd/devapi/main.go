@@ -26,6 +26,7 @@ import (
 	resolveapi "github.com/zaidmukaddam/dug/api/resolve"
 	seoapi "github.com/zaidmukaddam/dug/api/seo"
 	serverapi "github.com/zaidmukaddam/dug/api/server"
+	servercardapi "github.com/zaidmukaddam/dug/api/servercard"
 	srcapi "github.com/zaidmukaddam/dug/api/src"
 	tlsapi "github.com/zaidmukaddam/dug/api/tls"
 	vsapi "github.com/zaidmukaddam/dug/api/vs"
@@ -38,28 +39,29 @@ func main() {
 	}
 
 	routes := map[string]http.HandlerFunc{
-		"/api/addr":      addrapi.Handler,
-		"/api/aeo":       aeoapi.Handler,
-		"/api/aicatalog": aicatalogapi.Handler,
-		"/api/catalog":   catalogapi.Handler,
-		"/api/delegate":  delegateapi.Handler,
-		"/api/fetch":     fetchapi.Handler,
-		"/api/guard":     guardapi.Handler,
-		"/api/llms":      llmsapi.Handler,
-		"/api/mail":      mailapi.Handler,
-		"/api/mcp":       mcpapi.Handler,
-		"/api/me":        meapi.Handler,
-		"/api/og":        ogapi.Handler,
-		"/api/openapi":   openapiapi.Handler,
-		"/api/probe":     probeapi.Handler,
-		"/api/propagate": propagateapi.Handler,
-		"/api/rdap":      rdapapi.Handler,
-		"/api/resolve":   resolveapi.Handler,
-		"/api/seo":       seoapi.Handler,
-		"/api/server":    serverapi.Handler,
-		"/api/src":       srcapi.Handler,
-		"/api/tls":       tlsapi.Handler,
-		"/api/vs":        vsapi.Handler,
+		"/api/addr":       addrapi.Handler,
+		"/api/aeo":        aeoapi.Handler,
+		"/api/aicatalog":  aicatalogapi.Handler,
+		"/api/catalog":    catalogapi.Handler,
+		"/api/delegate":   delegateapi.Handler,
+		"/api/fetch":      fetchapi.Handler,
+		"/api/guard":      guardapi.Handler,
+		"/api/llms":       llmsapi.Handler,
+		"/api/mail":       mailapi.Handler,
+		"/api/mcp":        mcpapi.Handler,
+		"/api/me":         meapi.Handler,
+		"/api/og":         ogapi.Handler,
+		"/api/openapi":    openapiapi.Handler,
+		"/api/probe":      probeapi.Handler,
+		"/api/propagate":  propagateapi.Handler,
+		"/api/rdap":       rdapapi.Handler,
+		"/api/resolve":    resolveapi.Handler,
+		"/api/seo":        seoapi.Handler,
+		"/api/server":     serverapi.Handler,
+		"/api/servercard": servercardapi.Handler,
+		"/api/src":        srcapi.Handler,
+		"/api/tls":        tlsapi.Handler,
+		"/api/vs":         vsapi.Handler,
 	}
 
 	mux := http.NewServeMux()
