@@ -183,7 +183,7 @@ func run(r *http.Request, result *screen.Result, leftName, rightName string) {
 		}
 	}
 
-	result.Note("a dash means the record or capability was not found, which is not the same as one domain being worse configured than the other. both columns were queried the same way at the same moment.")
+	result.Note("a dash means the record or capability wasn’t found, which isn’t the same as one domain being worse configured than the other. both columns were queried the same way at the same moment.")
 }
 
 func build(ctx context.Context, name string) profile {

@@ -153,7 +153,7 @@ function describe(payload: Payload): string {
     lines.push(payload.verdict.detail)
   }
   for (const entry of payload.degraded) {
-    lines.push(`degraded: ${entry.source} — ${entry.reason}`)
+    lines.push(`degraded: ${entry.source}, ${entry.reason}`)
   }
   return lines.join("\n")
 }
@@ -251,7 +251,7 @@ export function useWebMcp(
           const payload = await runLatest(words.join(" "))
           if (!payload) {
             return {
-              content: [{ type: "text", text: `${spec.name} could not run. check the argument.` }],
+              content: [{ type: "text", text: `${spec.name} couldn’t run. check the argument.` }],
               isError: true,
             }
           }
@@ -275,18 +275,18 @@ export function useWebMcp(
     tools.push({
       name: "dug_investigate",
       description:
-        "Answer a question that takes several lookups, and build the case on the page while " +
-        "you do. You choose the commands and the order — this is your plan, not a preset — " +
-        "and each screen is left on screen, in sequence, under the question that produced it, " +
-        "so the person watching ends up with the evidence rather than your summary of it. " +
-        "Prefer this over calling the single-command tools yourself whenever the user has " +
-        "described a symptom rather than named a lookup, and whenever one answer will not " +
+        "Answer a question that takes more than one lookup, and build the case on the page " +
+        "while you do. You choose the commands and the order: this is your plan, not a preset. " +
+        "Each screen is left on the page, in sequence, under the question that produced it, " +
+        "so the person watching ends up with the evidence, not your summary of it. " +
+        "Prefer this over calling the single-command tools yourself whenever the person has " +
+        "described a symptom instead of naming a lookup, and whenever one answer won’t " +
         "settle it. Steps use the same grammar as the other tools: a command name, a target, " +
         "and an optional second argument. For example " +
         example("mail") +
         ", or " +
         example("dns") +
-        ". A step naming a command that does not exist is skipped and reported back to you; " +
+        ". A step naming a command that doesn’t exist is skipped and reported back to you; " +
         "the rest still run.",
       inputSchema: {
         type: "object",
@@ -294,7 +294,7 @@ export function useWebMcp(
           question: {
             type: "string",
             description:
-              "The question being answered, in the words the person would use — it becomes " +
+              "The question being answered, in the words the person would use. It becomes " +
               "the heading the evidence is filed under. Not a restatement of the commands.",
           },
           target: {
@@ -352,7 +352,7 @@ export function useWebMcp(
         // walking every block, and the payloads underneath so it can if it
         // wants to. The person already has the screens.
         const summary = [
-          `${question} — ${target}`,
+          `${question}: ${target}`,
           ...found.map((step) => `\n${step.command}\n${describe(step.payload)}`),
           ...(skipped.length > 0 ? [`\nnot run: ${skipped.join(", ")}`] : []),
         ].join("\n")

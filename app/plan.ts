@@ -92,7 +92,7 @@ export async function plan(ask: string): Promise<PlanOutcome> {
     return refuse(text, "ask in up to 500 characters")
   }
   if (!process.env.OPENAI_API_KEY) {
-    return refuse(text, "the planner is not configured on this deployment")
+    return refuse(text, "the planner isn’t configured on this deployment")
   }
 
   try {
@@ -116,13 +116,13 @@ export async function plan(ask: string): Promise<PlanOutcome> {
       .filter((step) => VERBS.has(step.split(/\s+/)[0]?.toUpperCase() ?? ""))
 
     if (!target || steps.length === 0) {
-      return refuse(text, "could not turn that into commands. try naming the domain")
+      return refuse(text, "couldn’t turn that into commands. try naming the domain")
     }
     return { ok: true, question: output.question, target, steps }
   } catch (error) {
     if (NoObjectGeneratedError.isInstance(error)) {
-      return refuse(text, "could not turn that into commands. try naming the domain")
+      return refuse(text, "couldn’t turn that into commands. try naming the domain")
     }
-    return refuse(text, "the planner did not answer")
+    return refuse(text, "the planner didn’t answer")
   }
 }

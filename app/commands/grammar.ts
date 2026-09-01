@@ -66,7 +66,7 @@ export const COMMANDS: CommandSpec[] = [
     family: "resolution",
     endpoint: "/api/resolve",
     argument: "domain",
-    summary: "every record type, or just one",
+    summary: "every record type, or a single one",
     example: "DIG example.com MX",
   },
   {
@@ -260,7 +260,7 @@ export const COMMANDS: CommandSpec[] = [
     family: "readability",
     endpoint: "/api/webmcp",
     argument: "domain",
-    summary: "tools for an agent in the page, and the mcp surface for one that is not",
+    summary: "tools for an agent in the page, and the mcp surface for one that isn’t",
     example: "WEBMCP example.com",
   },
   {
@@ -283,7 +283,7 @@ export const NOT_HERE: { label: string; reason: string }[] = [
   },
   {
     label: "registrant lookup",
-    reason: "redacted at source, and there is an official channel",
+    reason: "redacted at source, and there’s an official channel",
   },
   {
     label: "reaching private space",
@@ -339,35 +339,35 @@ function validate(spec: CommandSpec, words: string[]): ParseFailure | null {
   if ((spec.argument === "domain" || spec.argument === "host" || spec.argument === "pair") && !DOMAIN.test(first)) {
     return {
       input: first,
-      message: `${first} is not a domain name`,
+      message: `${first} isn’t a domain name`,
       hint: spec.example,
     }
   }
 
   if (spec.argument === "pair" && second && !DOMAIN.test(second)) {
-    return { input: second, message: `${second} is not a domain name`, hint: spec.example }
+    return { input: second, message: `${second} isn’t a domain name`, hint: spec.example }
   }
 
   if (spec.argument === "address" && !looksLikeAddress(first)) {
-    return { input: first, message: `${first} is not an ip address`, hint: spec.example }
+    return { input: first, message: `${first} isn’t an ip address`, hint: spec.example }
   }
 
   if (spec.argument === "endpoint" && !looksLikeAddress(first) && !DOMAIN.test(first)) {
     return {
       input: first,
-      message: `${first} is not a host or an ip address`,
+      message: `${first} isn’t a host or an ip address`,
       hint: spec.example,
     }
   }
 
   if (spec.argument === "asn" && !/^(as)?\d+$/i.test(first)) {
-    return { input: first, message: `${first} is not an as number`, hint: spec.example }
+    return { input: first, message: `${first} isn’t an as number`, hint: spec.example }
   }
 
   if (spec.argument === "cidr" && !CIDR.test(first)) {
     return {
       input: first,
-      message: `${first} is not a network in cidr form`,
+      message: `${first} isn’t a network in cidr form`,
       hint: spec.example,
     }
   }
@@ -415,7 +415,7 @@ export function parse(input: string): ParseResult {
       ok: false,
       failure: {
         input: words[0],
-        message: `${words[0].toLowerCase()} is not a command`,
+        message: `${words[0].toLowerCase()} isn’t a command`,
         hint: "HELP lists all of them",
       },
     }

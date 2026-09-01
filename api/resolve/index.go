@@ -85,7 +85,7 @@ func runDig(r *http.Request, result *screen.Result, name string, resolver resolv
 	} else {
 		result.SetVerdict("none",
 			name+" returned no records at all",
-			"either the name does not exist or the resolver has nothing for it")
+			"either the name doesn’t exist or the resolver has nothing for it")
 	}
 
 	result.Add("GraphStat", screen.StatProps{Title: "answer", Items: []screen.StatItem{

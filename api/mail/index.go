@@ -192,7 +192,7 @@ func runMail(r *http.Request, result *screen.Result, name string) {
 	}
 	if !hasDKIM {
 		result.Note(fmt.Sprintf(
-			"no dkim selector answered out of %d common ones. selectors cannot be enumerated from dns, so this means not found rather than not present.",
+			"no dkim selector answered out of %d common ones. selectors can’t be enumerated from dns, so this means not found, not absent.",
 			len(mailx.Selectors)))
 	}
 	if hasSPF {
@@ -200,7 +200,7 @@ func runMail(r *http.Request, result *screen.Result, name string) {
 			"the spf record expands across %d domains and %d lookups. SPF %s draws the include tree.",
 			walk.Domains(), walk.Lookups, name))
 	}
-	result.Note("alignment here is the published policy, not an observed result. whether a given message aligns depends on the message, and there is no message in this query.")
+	result.Note("alignment here is the published policy, not an observed result. whether a given message aligns depends on the message, and there’s no message in this query.")
 }
 
 func runSPF(r *http.Request, result *screen.Result, name string) {

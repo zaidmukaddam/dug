@@ -83,7 +83,7 @@ func run(r *http.Request, result *screen.Result, name string) {
 	}
 	result.SetVerdict(state,
 		name+" serves "+itoa(present)+" of "+itoa(total)+" crawler signals",
-		"each one is listed below with what the page actually said. nothing here is a ranking estimate.")
+		"each one is listed below with what the page said. nothing here is a ranking estimate.")
 
 	result.Add("GraphCheck", screen.CheckProps{
 		Title: "crawler signals",

@@ -143,8 +143,8 @@ func run(r *http.Request, result *screen.Result, name string) {
 				"so only a browser can list them.")
 	case referenced:
 		result.SetVerdict("warn",
-			name+" references webmcp but is not origin isolated",
-			"chromium disables the api in a document that is not origin isolated, so native "+
+			name+" references webmcp but isn’t origin isolated",
+			"chromium disables the api in a document that isn’t origin isolated, so native "+
 				"webmcp will refuse whatever this page registers. sending "+
 				"Origin-Agent-Cluster: ?1 is what turns it on.")
 	case remote.found || card.Found || manifest.Found:
@@ -195,7 +195,7 @@ func run(r *http.Request, result *screen.Result, name string) {
 	}}, 2)
 
 	result.Note("signals present: " + itoa(present) + " of " + itoa(total))
-	result.Note("tool registration happens in the browser and cannot be read from here")
+	result.Note("tool registration happens in the browser and can’t be read from here")
 }
 
 // scriptURLs is the same origin scripts the page loads, deduplicated. A third

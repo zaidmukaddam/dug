@@ -93,8 +93,8 @@ const (
 // out. Lives here so llms.txt and the OpenAPI document quote one string rather
 // than two that can disagree.
 const VersionPolicy = "The paths are unversioned and additive. New commands, new blocks and " +
-	"new fields may appear at any time, so parse defensively and ignore what you do " +
-	"not recognise. A change that would break an existing caller ships under a /v2/ " +
+	"new fields may appear at any time, so parse defensively and ignore what you " +
+	"don’t recognise. A change that would break an existing caller ships under a /v2/ " +
 	"path prefix instead of changing these; the current paths would then carry " +
 	"Deprecation and Sunset headers (RFC 9745 and RFC 8594) for at least 180 days " +
 	"before removal. No such header is set today, which is the signal that nothing " +

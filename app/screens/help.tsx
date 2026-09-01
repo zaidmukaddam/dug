@@ -42,9 +42,9 @@ export function helpPayload(): Payload {
         props: {
           title: "reading a screen",
           rows: [
-            { label: "[*] live", value: "answered just now", accent: true },
+            { label: "[*] live", value: "answered a moment ago", accent: true },
             { label: "[~] cached", value: "held under its own ttl, age shown" },
-            { label: "[x] and [ ]", value: "passed and did not, glyph never colour alone" },
+            { label: "[x] and [ ]", value: "passed and didn’t, glyph never colour alone" },
             { label: "none", value: "checked and absent, not skipped" },
             { label: "degraded", value: "an upstream failed, the rest still answered" },
           ],
@@ -72,7 +72,7 @@ export function helpPayload(): Payload {
       },
     ],
     notes: [
-      "every command is deterministic and there is no model on the command path. " +
+      "every command is deterministic and there’s no model on the command path. " +
         "a bad routing day should degrade this app, not break it.",
       "arrow keys walk the history. the resolver list is a constant in the codebase, " +
         "not something a query can point somewhere else.",

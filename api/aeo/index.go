@@ -90,7 +90,7 @@ func run(r *http.Request, result *screen.Result, name string) {
 	}
 	result.SetVerdict(state,
 		name+" carries "+itoa(present)+" of "+itoa(total)+" signals an answer engine reads",
-		"each one is a file, a header or a negotiation that either happened or did not. "+
+		"each one is a file, a header or a negotiation that either happened or didn’t. "+
 			"none of it predicts whether a model will cite the page.")
 
 	result.Add("GraphCheck", screen.CheckProps{
@@ -152,8 +152,8 @@ func run(r *http.Request, result *screen.Result, name string) {
 	}
 
 	result.Note("aeo and geo are measured the same way here. both ask whether a machine " +
-		"that is not a browser can read the content and find a structured way in, and " +
-		"that is one set of facts however it is marketed.")
+		"that isn’t a browser can read the content and find a structured way in, and " +
+		"that’s one set of facts however it’s marketed.")
 	result.Note("nothing on this screen predicts citation. whether a model quotes a page " +
 		"depends on its training and its retrieval, neither of which is observable from " +
 		"outside, so no number for it is offered.")

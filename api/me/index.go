@@ -24,7 +24,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	address, source := clientAddr(r)
 	if address == "" {
-		result.SetVerdict("warn", "the address this request came from is not visible",
+		result.SetVerdict("warn", "the address this request came from isn’t visible",
 			"no forwarded-for header and no usable remote address")
 		result.Add("GraphSpec", screen.SpecProps{Title: "request", Rows: []screen.SpecRow{
 			{Label: "address", Value: "unknown", Accent: true},
@@ -42,7 +42,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// showing a refusal would read as a fault rather than as the answer.
 	if parsed, err := netip.ParseAddr(address); err == nil && !isPublic(parsed) {
 		result.SetVerdict("ok", "this request came from "+address,
-			"a private address, so there is no origin network to look up. "+
+			"a private address, so there’s no origin network to look up. "+
 				"running locally, this is your own machine.")
 		result.Add("GraphSpec", screen.SpecProps{Title: "request", Rows: []screen.SpecRow{
 			{Label: "address", Value: address, Accent: true},

@@ -228,7 +228,7 @@ func runIP(r *http.Request, result *screen.Result, target string) {
 	if len(ptr.Records) == 0 {
 		result.Note("no reverse dns. that is common for cloud and cdn address space and is a finding rather than a failure.")
 	}
-	result.Note("asn and prefix come from team cymru's dns mapping. bgp neighbours are as seen by cymru's collectors, not by this tool, which does not speak bgp.")
+	result.Note("asn and prefix come from team cymru's dns mapping. bgp neighbours are as seen by cymru's collectors, not by this tool, which doesn’t speak bgp.")
 }
 
 func runASN(r *http.Request, result *screen.Result, target string) {

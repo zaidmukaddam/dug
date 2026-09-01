@@ -44,7 +44,7 @@ var targetAbout = map[string]string{
 // agent should read instead.
 var List = []Spec{
 	{Name: "DIG", Family: "resolution", Endpoint: "/api/resolve", Argument: "domain",
-		Summary: "every record type, or just one", Example: "DIG example.com MX",
+		Summary: "every record type, or a single one", Example: "DIG example.com MX",
 		Path:   "/dig/{target}",
 		Params: []Param{{Name: "type", About: "a single record type to ask for, such as MX", Example: "MX"}}},
 
@@ -146,7 +146,7 @@ var List = []Spec{
 		Example: "OG example.com", Path: "/og/{target}"},
 
 	{Name: "WEBMCP", Family: "readability", Endpoint: "/api/webmcp", Argument: "domain",
-		Summary: "tools for an agent in the page, and the mcp surface for one that is not",
+		Summary: "tools for an agent in the page, and the mcp surface for one that isn’t",
 		Example: "WEBMCP example.com", Path: "/webmcp/{target}"},
 }
 
@@ -154,7 +154,7 @@ var List = []Spec{
 // refuses to do will not waste a call finding out.
 var NotHere = [][2]string{
 	{"monitoring and alerts", "nothing is stored between queries"},
-	{"registrant lookup", "redacted at source, and there is an official channel"},
+	{"registrant lookup", "redacted at source, and there’s an official channel"},
 	{"reaching private space", "every destination is validated, on every command"},
 }
 

@@ -170,7 +170,7 @@ func runNS(r *http.Request, result *screen.Result, name string) {
 	}, 1)
 
 	if !consistent && len(parentSet) > 0 && len(resolverSet) > 0 {
-		result.Note("the parent delegation and the resolver answer name different nameservers. during a nameserver change that resolves on its own; otherwise it is a real inconsistency.")
+		result.Note("the parent delegation and the resolver answer name different nameservers. during a nameserver change that resolves on its own; otherwise it’s a real inconsistency.")
 	}
 	result.Note("walked iteratively from " + resolvers.Roots[0].Name + ", so this is the delegation itself rather than one resolver's cached view of it.")
 }
@@ -382,9 +382,9 @@ func runDNSSEC(r *http.Request, result *screen.Result, name string) {
 
 	switch {
 	case !dsAtParent && hasKeys:
-		result.Note("the zone publishes dnskey records but the parent holds no ds for it, so the keys are an island of trust. resolvers cannot reach them from the root and answer as if the zone were unsigned.")
+		result.Note("the zone publishes dnskey records but the parent holds no ds for it, so the keys are an island of trust. resolvers can’t reach them from the root and answer as if the zone were unsigned.")
 	case !dsAtParent:
-		result.Note("no ds record at the parent means the zone is unsigned. that is a configuration choice, not a fault, and most of the namespace is in the same position.")
+		result.Note("no ds record at the parent means the zone is unsigned. that’s a configuration choice, not a fault, and most of the namespace is in the same position.")
 	}
 }
 

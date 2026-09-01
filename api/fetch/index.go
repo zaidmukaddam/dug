@@ -202,7 +202,7 @@ func runHTTP(r *http.Request, result *screen.Result, name string) {
 
 	if redirects > 0 {
 		result.Note(fmt.Sprintf(
-			"%d requests were made and each destination was validated again before connecting. redirects are followed by the server, never by handing a user-supplied url to a fetcher.",
+			"%d requests were made and each destination was validated again before connecting. redirects are followed by the server, never from a url the caller supplied.",
 			len(response.Hops)))
 	}
 	result.Note("one region to one endpoint. header presence is not header correctness, and this screen only reports what was sent.")
@@ -292,7 +292,7 @@ func runTrace(r *http.Request, result *screen.Result, name string) {
 	}, 1)
 
 	result.Note("these are http request timings, not network hops. ROUTE walks the path hop by hop with icmp.")
-	result.Note("measured once, from one region, to one endpoint. this is not a global latency figure and a single sample is not a distribution.")
+	result.Note("measured once, from one region, to one endpoint. this isn’t a global latency figure and a single sample isn’t a distribution.")
 }
 
 func short(url string) string {

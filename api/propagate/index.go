@@ -84,7 +84,7 @@ func run(r *http.Request, result *screen.Result, name string) {
 			"fully propagated")
 	} else if agreeing == 0 {
 		result.SetVerdict("warn", "no resolver returned an address for "+name,
-			"a change may still be spreading, or the name does not resolve")
+			"a change may still be spreading, or the name doesn’t resolve")
 	} else {
 		result.SetVerdict("warn",
 			fmt.Sprintf("%d of %d resolvers return the same address for %s", agreeing, len(resolvers.List), name),

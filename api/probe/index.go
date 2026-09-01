@@ -141,7 +141,7 @@ func runPing(r *http.Request, result *screen.Result, host string, count int) {
 	if answered == 0 {
 		result.SetVerdict("warn",
 			fmt.Sprintf("%s did not answer any of %d pings", host, len(replies)),
-			"many hosts drop icmp by policy, so this is not proof it is down")
+			"a host may drop icmp by policy, so this isn’t proof it’s down")
 	} else {
 		state := "ok"
 		if loss > 0 {
@@ -248,7 +248,7 @@ func runRoute(r *http.Request, result *screen.Result, host string) {
 
 	detail := fmt.Sprintf("%d hops answered and %d stayed silent", responding, silent)
 	if silent > 0 {
-		detail += ", which is normal since many routers do not reply"
+		detail += ", which is normal because a router is free to ignore icmp"
 	}
 	if reached {
 		result.SetVerdict("ok", fmt.Sprintf("%s is %d hops away", host, len(hops)), detail)
@@ -527,7 +527,7 @@ func resolveOne(ctx context.Context, host string) (netip.Addr, error) {
 func icmpUnavailable(result *screen.Result, command, why string) {
 	result.Degrade("icmp", why)
 	result.SetVerdict("warn", "icmp is not available in this runtime",
-		"the kernel refused an unprivileged icmp socket, which sandboxed serverless runtimes usually do")
+		"the kernel refused an unprivileged icmp socket, which sandboxed serverless runtimes do")
 	result.Add("GraphSpec", screen.SpecProps{Title: command, Rows: []screen.SpecRow{
 		{Label: "result", Value: "no probe was sent", Accent: true},
 		{Label: "reason", Value: why},

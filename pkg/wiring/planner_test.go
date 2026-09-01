@@ -44,7 +44,7 @@ func TestPlannerIsAnActionNotARoute(t *testing.T) {
 	}
 	// Without a key the action must answer cleanly rather than throw, so the
 	// prompt shows a sentence with a command to fall back on.
-	if !strings.Contains(action, "OPENAI_API_KEY") || !strings.Contains(action, "not configured") {
+	if !strings.Contains(action, "OPENAI_API_KEY") || !strings.Contains(action, "isn’t configured") {
 		t.Error("app/plan.ts does not refuse cleanly when OPENAI_API_KEY is unset")
 	}
 	// An action is a POST anyone can send once they have the id, so its own

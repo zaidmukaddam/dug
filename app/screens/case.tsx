@@ -65,7 +65,7 @@ export function CaseFile({
                     state === "failed" && "text-graph-muted line-through",
                     state === "waiting" && "text-graph-muted"
                   )}
-                  title={state === "failed" ? "this command did not run" : undefined}
+                  title={state === "failed" ? "this command didn’t run" : undefined}
                 >
                   {MARK[state]} {command}
                 </span>

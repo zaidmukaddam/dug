@@ -174,8 +174,8 @@ func run(r *http.Request, result *screen.Result) {
 		Caption: fmt.Sprintf("%d resolvers probed", len(answers)),
 	}, 1)
 
-	result.Note("egress addresses on vercel are shared and rotating, so an upstream may rate limit this deployment for reasons that have nothing to do with it. that is why every screen carries a degraded state rather than an error.")
-	result.Note("the guard runs in net.Dialer.Control, which fires after resolution and before connect, so there is no window between the check and the connection for a second dns answer.")
+	result.Note("egress addresses on vercel are shared and rotating, so an upstream may rate limit this deployment for reasons that have nothing to do with it. that’s why every screen carries a degraded state, not an error.")
+	result.Note("the guard runs in net.Dialer.Control, which fires after resolution and before connect, so there’s no window between the check and the connection for a second dns answer.")
 }
 
 func probeUpstreams(ctx context.Context) []screen.CheckItem {

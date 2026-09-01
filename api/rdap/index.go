@@ -174,7 +174,7 @@ func runRDAP(r *http.Request, result *screen.Result, name string) {
 	switch record.Protocol {
 	case "whois":
 		result.Note("answered over whois on port 43 because ." + labels +
-			" publishes no rdap service. icann contracts bind gtlds only and about forty percent of cctlds are still whois only.")
+			" publishes no rdap service. icann contracts bind gtlds only, so a cctld may never publish one.")
 	case "none":
 		result.Note("neither rdap nor whois returned a usable record for ." + labels +
 			". nothing partial is being shown as complete.")
@@ -233,7 +233,7 @@ func runWatch(r *http.Request, result *screen.Result, name string) {
 		}
 		result.SetVerdict(state,
 			fmt.Sprintf("the %s for %s lapses first, in %d days", known[0].label, name, days),
-			"computed from a query made just now, nothing is being monitored")
+			"computed from a query made a moment ago, nothing is being monitored")
 	}
 
 	if hasDomain {
@@ -287,7 +287,7 @@ func runWatch(r *http.Request, result *screen.Result, name string) {
 	}
 	result.Add("GraphTimeline", screen.TimelineProps{Title: "horizon", Events: events}, 2)
 
-	result.Note("nothing is being watched. both figures come from a query made just now, and there is no store, no schedule and no alert behind them. re-run the command to see current numbers.")
+	result.Note("nothing is being watched. both figures come from a query made a moment ago, and there’s no store, no schedule and no alert behind them. re-run the command to see current numbers.")
 }
 
 type eventEntry struct {

@@ -212,12 +212,12 @@ func run(r *http.Request, result *screen.Result, name string) {
 		}
 		if earliest.Role != "leaf" {
 			result.Note(fmt.Sprintf(
-				"the %s certificate expires before the leaf, on %s. renewing the leaf alone will not fix that.",
+				"the %s certificate expires before the leaf, on %s. renewing the leaf alone won’t fix that.",
 				earliest.Role, earliest.NotAfter.Format("2006-01-02")))
 		}
 	}
 	if len(weak) > 0 {
-		result.Note(joinAnd(weak) + " are still offered. both are deprecated and most clients will not negotiate them, so this is a configuration leftover rather than an active risk.")
+		result.Note(joinAnd(weak) + " are still offered. both are deprecated and current clients won’t negotiate them, so this is a configuration leftover, not an active risk.")
 	}
 	result.Note("chain " + handshake.ChainSource + ". timing is one region to one endpoint and is not a global measurement.")
 }

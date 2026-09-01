@@ -45,7 +45,7 @@ export function matchInvestigation(text: string): InvestigationMatch | null {
       ok: false,
       failure: {
         input: trimmed,
-        message: topic ? `there is no ${topic} investigation` : "why needs something to investigate",
+        message: topic ? `there’s no ${topic} investigation` : "why needs something to investigate",
         hint: `try one of ${topics}, as in WHY mail example.com`,
       },
     }
@@ -73,12 +73,12 @@ export const INVESTIGATIONS: Investigation[] = [
   },
   {
     id: "dns",
-    question: "has my dns change actually taken effect",
+    question: "has my dns change taken effect",
     steps: (target) => [`PROP ${target}`, `TTL ${target}`, `NS ${target}`, `DNSSEC ${target}`],
   },
   {
     id: "tls",
-    question: "is this site's certificate and transport healthy",
+    question: "is this site’s certificate and transport healthy",
     steps: (target) => [`TLS ${target}`, `WATCH ${target}`, `HTTP ${target}`, `TRACE ${target}`],
   },
   {

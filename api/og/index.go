@@ -102,11 +102,11 @@ func run(r *http.Request, result *screen.Result, name string) {
 		state = "warn"
 	}
 	headline := name + " builds " + itoa(present) + " of " + itoa(total) + " card signals"
-	detail := "the image was fetched, not just read off the tag."
+	detail := "the image was fetched, not only read off the tag."
 	switch {
 	case rawImage == "":
 		headline = name + " declares no og:image"
-		detail = "most scrapers will show a card with no picture, or no card at all."
+		detail = "scrapers show a card with no picture, or no card at all."
 	case !loads:
 		headline = name + " declares an og:image that did not load"
 		detail = "the tag is there and the file is not: " + imageFailure(img)
@@ -192,8 +192,8 @@ func run(r *http.Request, result *screen.Result, name string) {
 	result.Note("the image is fetched from here, not from a scraper's network. an image " +
 		"behind a firewall or a geo rule may load for this tool and not for the platform, " +
 		"or the reverse.")
-	result.Note("1200x630 and the 5mb ceiling are what the large scrapers document rather " +
-		"than rules. a card outside them still renders in some places and not others, which " +
+	result.Note("1200x630 and the 5 MB ceiling are what the large scrapers document, not " +
+		"rules. a card outside them still renders in some places and not others, which " +
 		"is why they are reported as measurements and not as failures.")
 }
 

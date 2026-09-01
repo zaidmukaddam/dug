@@ -15,7 +15,7 @@ export default function NotFound() {
 
   return (
     <Notice
-      headline={`${pathname} does not resolve`}
+      headline={`${pathname} doesn’t resolve`}
       detail="the route set is closed, the same way the command set is. nothing here is generated from the url."
       title="request"
       rows={[
