@@ -46,6 +46,62 @@ type Slot = { caseId: number; index: number }
 
 type Status = "idle" | "running"
 
+// A command, resolved as far as it can be without the network. Separating this
+// from performing it is what lets a caller know whether a fetch is coming
+// before it commits to showing a skeleton for one.
+type Lookup =
+  | { kind: "failed"; failure: ParseFailure }
+  | { kind: "ready"; label: string; payload: Payload }
+  | { kind: "fetch"; label: string; url: string; key: string }
+
+type Outcome =
+  | { ok: true; label: string; payload: Payload }
+  | { ok: false; failure: ParseFailure }
+
+function lookup(text: string): Lookup {
+  const result = parse(text)
+  if (!result.ok) {
+    return { kind: "failed", failure: result.failure }
+  }
+
+  const { spec, target, cacheExtra, url, label } = result.command
+  if (spec.name === "HELP") {
+    return { kind: "ready", label, payload: helpPayload() }
+  }
+
+  const key = cacheKey(spec.name, target, cacheExtra)
+  const hit = readCache(key)
+  if (hit) {
+    return { kind: "ready", label, payload: hit }
+  }
+  return { kind: "fetch", label, url, key }
+}
+
+async function perform(step: Lookup): Promise<Outcome> {
+  if (step.kind === "failed") {
+    return { ok: false, failure: step.failure }
+  }
+  if (step.kind === "ready") {
+    return { ok: true, label: step.label, payload: step.payload }
+  }
+
+  try {
+    const response = await fetch(step.url, { headers: { accept: "application/json" } })
+    const payload = (await response.json()) as Payload
+    writeCache(step.key, payload)
+    return { ok: true, label: step.label, payload }
+  } catch (error) {
+    return {
+      ok: false,
+      failure: {
+        input: step.label,
+        message: error instanceof Error ? error.message : "the request failed",
+        hint: "the answer is not being shown as partial. try again",
+      },
+    }
+  }
+}
+
 const PLACEHOLDER = "try TLS example.com, or HELP"
 
 export default function Page() {
@@ -98,77 +154,36 @@ export default function Page() {
     )
   }, [])
 
-  // One path for every caller. A WebMCP tool call runs this too, so an agent
+  // One command, onto the page. A WebMCP tool call runs this too, so an agent
   // and a person get the same parse, the same cache and the same screen.
   //
-  // `into` is the open case a result belongs to. It also suppresses the running
-  // status: a case draws its own progress, and the shared skeleton would
-  // otherwise flash between every step.
+  // The skeleton is raised only for a step that will actually fetch, which is
+  // why lookup and perform are separate: a cache hit resolves in a microtask
+  // and would otherwise show a frame of skeleton on its way past.
   const run = useCallback(
-    async (text: string, into?: Slot): Promise<Payload | null> => {
-      const result = parse(text)
-      if (!result.ok) {
-        // Inside a case the failure belongs to its own step, so the plan can
-        // strike that command out and leave the rest of the sequence honest.
-        if (into) {
-          pushInto(into, { state: "failed" })
-        } else {
-          setFailure(result.failure)
-        }
-        return null
-      }
-
-      setFailure(null)
-      const { spec, target, cacheExtra, url, label } = result.command
-      const land = (text: string, payload: Payload) => {
-        if (!into) {
-          push(text, payload)
-          return
-        }
-        nextId.current += 1
-        pushInto(into, { state: "done", id: nextId.current, label: text, payload })
-      }
-
-      if (spec.name === "HELP") {
-        const payload = helpPayload()
-        land(label, payload)
-        return payload
-      }
-
-      const key = cacheKey(spec.name, target, cacheExtra)
-      const hit = readCache(key)
-      if (hit) {
-        land(label, hit)
-        return hit
-      }
-
-      if (into === undefined) {
+    async (text: string): Promise<Payload | null> => {
+      const step = lookup(text)
+      const fetching = step.kind === "fetch"
+      if (fetching) {
         setStatus("running")
       }
+
       try {
-        const response = await fetch(url, { headers: { accept: "application/json" } })
-        const payload = (await response.json()) as Payload
-        writeCache(key, payload)
-        land(label, payload)
-        return payload
-      } catch (error) {
-        if (into) {
-          pushInto(into, { state: "failed" })
-        } else {
-          setFailure({
-            input: label,
-            message: error instanceof Error ? error.message : "the request failed",
-            hint: "the answer is not being shown as partial. try again",
-          })
+        const outcome = await perform(step)
+        if (!outcome.ok) {
+          setFailure(outcome.failure)
+          return null
         }
-        return null
+        setFailure(null)
+        push(outcome.label, outcome.payload)
+        return outcome.payload
       } finally {
-        if (into === undefined) {
+        if (fetching) {
           setStatus("idle")
         }
       }
     },
-    [push, pushInto]
+    [push]
   )
 
   // One question, several lookups, one case file.
@@ -187,16 +202,26 @@ export default function Page() {
 
       setFailure(null)
 
+      // No status here: a case draws its own progress, and the shared skeleton
+      // would flash between every step. A step that fails keeps its slot so the
+      // plan can strike that command out without shifting the ones after it.
       const found: { command: string; payload: Payload }[] = []
       for (const [index, command] of planned.entries()) {
-        const payload = await run(command, { caseId, index })
-        if (payload) {
-          found.push({ command, payload })
+        const outcome = await perform(lookup(command))
+        if (!outcome.ok) {
+          pushInto({ caseId, index }, { state: "failed" })
+          continue
         }
+        nextId.current += 1
+        pushInto(
+          { caseId, index },
+          { state: "done", id: nextId.current, label: outcome.label, payload: outcome.payload }
+        )
+        found.push({ command, payload: outcome.payload })
       }
       return found
     },
-    [run]
+    [pushInto]
   )
 
   useWebMcp(run, investigate)
