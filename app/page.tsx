@@ -532,6 +532,22 @@ function Landing({
             this list and you do not have to learn it: say the symptom, and it writes its own
             sequence out of the {COMMANDS.length} commands below.
           </p>
+
+          {/* The tools are registered in any browser, and in most of them nobody
+              is listening. Nothing on the page can detect that — the bridge
+              exposes no connection state — so rather than imply an agent is
+              here, say plainly where to get one. */}
+          <p className="max-w-3xl text-xs text-pretty text-graph-muted">
+            No agent in this browser? The tools are registered either way and nothing is listening
+            to them. Open this page in <span className="text-foreground">ChatGPT&apos;s browser</span>,{" "}
+            <span className="text-foreground">Codex</span>, or{" "}
+            <span className="text-foreground">Chrome with WebMCP enabled</span> and ask it to
+            investigate a domain. Everything here also answers over{" "}
+            <Link href="/mcp" className="text-graph-accent hover:underline">
+              /mcp
+            </Link>{" "}
+            for an agent that is not in a browser at all.
+          </p>
         </div>
       </Frame>
 
