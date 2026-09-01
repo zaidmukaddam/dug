@@ -351,7 +351,9 @@ export function proxy(request: NextRequest) {
   // alongside it — /server.json, the two well-known documents — are static,
   // cached for a day and cost nothing upstream, so they stay uncounted like
   // /llms.txt and /openapi.json already are.
-  if (pathname.startsWith("/api/") || isCommand || pathname === "/mcp") {
+  // /plan calls a model, which is the most expensive thing on the site, so it
+  // is counted with the rest.
+  if (pathname.startsWith("/api/") || isCommand || pathname === "/mcp" || pathname === "/plan") {
     // Counted before anything else, so a refused request is cheap and a caller
     // that is over its quota is told so rather than served.
     const quota = take(request)

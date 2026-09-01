@@ -30,8 +30,9 @@ import { useWebMcp } from "@/lib/webmcp"
 // arrive, so the person watches the evidence assemble rather than waiting on a
 // spinner and being handed a finished page.
 // Who asked. Rendered on the answer, because a page two people are using at
-// once should say which of them a screen came from.
-type Source = "you" | "agent"
+// once should say which of them a screen came from. "dug" is the page's own
+// planner, standing in for an agent that is not there.
+type Source = "you" | "agent" | "dug"
 
 type Entry =
   | { kind: "screen"; id: number; label: string; payload: Payload; source: Source }
@@ -107,7 +108,55 @@ async function perform(step: Lookup): Promise<Outcome> {
   }
 }
 
-const PLACEHOLDER = "try TLS example.com, or HELP"
+const PLACEHOLDER = "try TLS example.com, HELP, or just ask"
+
+const VERBS = new Set<string>(COMMANDS.map((spec) => spec.name))
+
+// Three or more words that do not open with a command. Short input is a typo
+// until proven otherwise, and a typo should cost a parse error, not a model.
+function looksLikeAQuestion(text: string): boolean {
+  const words = text.split(/\s+/)
+  return words.length >= 3 && !VERBS.has(words[0].toUpperCase())
+}
+
+type PlanOutcome =
+  | { ok: true; question: string; target: string; steps: string[] }
+  | { ok: false; failure: ParseFailure }
+
+async function askPlanner(ask: string): Promise<PlanOutcome> {
+  try {
+    const response = await fetch("/plan", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ask }),
+    })
+    const body = (await response.json()) as
+      | { question: string; target: string; steps: string[] }
+      | { error: string; message: string }
+
+    if (!response.ok || "error" in body) {
+      const message = "message" in body ? body.message : "the planner did not answer"
+      return {
+        ok: false,
+        failure: {
+          input: ask,
+          message,
+          hint: "a command still works: TLS example.com, or WHY mail example.com",
+        },
+      }
+    }
+    return { ok: true, ...body }
+  } catch {
+    return {
+      ok: false,
+      failure: {
+        input: ask,
+        message: "the planner could not be reached",
+        hint: "a command still works: TLS example.com, or WHY mail example.com",
+      },
+    }
+  }
+}
 
 export default function Page() {
   const [input, setInput] = useState("")
@@ -247,11 +296,7 @@ export default function Page() {
     // no endpoint returns several screens, so there is nothing for the grammar
     // to route it to.
     const why = matchInvestigation(text)
-    if (why) {
-      if (!why.ok) {
-        setFailure(why.failure)
-        return
-      }
+    if (why?.ok) {
       setInput("")
       setFailure(null)
       await investigate(
@@ -260,6 +305,37 @@ export default function Page() {
         why.investigation.steps(why.target),
         "you"
       )
+      return
+    }
+
+    // A WHY that did not match is one of two things. Three words or fewer is
+    // the keyword form with a typo, and the topic error is the useful answer.
+    // Longer is a sentence that happens to start with "why", and it belongs to
+    // the planner: "why is mail from acme.com going to spam" is not a request
+    // for an investigation called "is".
+    if (why && text.split(/\s+/).length <= 3) {
+      setFailure(why.failure)
+      return
+    }
+
+    // Plain words go to the planner. Anything that starts with a command, or is
+    // too short to be a sentence, still goes through parse so a typo gets the
+    // normal error rather than a model call.
+    if (looksLikeAQuestion(text)) {
+      setStatus("running")
+      setFailure(null)
+      try {
+        const plan = await askPlanner(text)
+        if (!plan.ok) {
+          setFailure(plan.failure)
+          return
+        }
+        setInput("")
+        setStatus("idle")
+        await investigate(plan.question, plan.target, plan.steps, "dug")
+      } finally {
+        setStatus("idle")
+      }
       return
     }
 
@@ -408,7 +484,7 @@ export default function Page() {
                 target={entry.target}
                 steps={entry.steps}
                 planned={entry.planned}
-                byAgent={entry.source === "agent"}
+                plannedBy={entry.source === "you" ? null : entry.source}
               />
             ) : (
               <div key={entry.id} className="flex flex-col gap-3">

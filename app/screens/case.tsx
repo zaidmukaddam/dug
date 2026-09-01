@@ -18,13 +18,15 @@ export function CaseFile({
   target,
   steps,
   planned,
-  byAgent,
+  plannedBy,
 }: {
   question: string
   target: string
   steps: (CaseStep | undefined)[]
   planned: string[]
-  byAgent: boolean
+  // Who chose the steps. null is a person clicking a landing question or
+  // typing WHY; the sequence was fixed and nobody planned it.
+  plannedBy: "agent" | "dug" | null
 }) {
   // The first slot with nothing in it yet is the one in flight.
   const pending = planned.findIndex((_, index) => !steps[index])
@@ -34,10 +36,12 @@ export function CaseFile({
       <header className="flex flex-col gap-4">
         <p className="text-xs tracking-wide text-graph-muted uppercase">
           investigating · <span className="text-foreground">{target}</span>
-          {byAgent ? (
+          {plannedBy ? (
             <>
               {" · "}
-              <span className="text-graph-accent">planned by your agent</span>
+              <span className="text-graph-accent">
+                {plannedBy === "agent" ? "planned by your agent" : "planned by dug"}
+              </span>
             </>
           ) : null}
         </p>

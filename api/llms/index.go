@@ -252,6 +252,11 @@ and return the same payloads, and an agent here can already do that by calling
 them itself. What it cannot do is leave the evidence somewhere a person is
 looking, which is the only thing the investigation adds.
 
+The page also has a planner of its own at POST /plan, which turns a sentence
+into a plan for a person typing at the prompt without an agent. You do not
+need it: you are the planner. Call dug_investigate with your own steps rather
+than spending a model call to have dug guess at them.
+
     const tools = await document.modelContext.getTools()
     await document.modelContext.executeTool(tool, '{"target":"github.com"}')
 

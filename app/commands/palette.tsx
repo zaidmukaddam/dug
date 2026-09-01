@@ -218,7 +218,8 @@ export function Palette({
               </>
             ) : null}
             {" · "}
-            <span className="font-mono">why mail example.com</span> investigates
+            <span className="font-mono">why mail example.com</span> investigates · or just ask in
+            plain words
           </>
         )}
       </p>
