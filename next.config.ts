@@ -13,6 +13,21 @@ const devApi = process.env.DEV_API_ORIGIN
 // /api/* rewrite below.
 const api = (path: string) => (devApi ? `${devApi}${path}` : path)
 
+// The html pages, which is every route that renders a document rather than
+// answering a lookup. pkg/wiring checks this against app/sitemap.ts, so a new
+// page cannot be added to one and forgotten in the other.
+const PAGES = ["/", "/about", "/developers", "/contact", "/privacy", "/deprecation"]
+
+// The same three relations pkg/screen sets on every api response. service-desc
+// is the machine description, service-doc the human one, describedby the prose
+// an agent reads first.
+const SERVICE_LINKS = [
+  `</openapi.json>; rel="service-desc"; type="application/vnd.oai.openapi+json"`,
+  `</developers>; rel="service-doc"; type="text/html"`,
+  `</llms.txt>; rel="describedby"; type="text/plain"`,
+  `</.well-known/ai-catalog.json>; rel="describedby"; type="application/ai-catalog+json"`,
+].join(", ")
+
 // The curl and agent surface: `curl /tls/github.com` rather than
 // `curl '/api/tls?command=TLS&target=github.com'`. Derived from the same
 // COMMANDS the browser parses, and internal/wiring checks these against the Go
@@ -86,7 +101,21 @@ const nextConfig: NextConfig = {
   // the header that opts in, and without it the native implementation refuses
   // no matter what the page registers.
   async headers() {
-    return [{ source: "/:path*", headers: [{ key: "Origin-Agent-Cluster", value: "?1" }] }]
+    return [
+      { source: "/:path*", headers: [{ key: "Origin-Agent-Cluster", value: "?1" }] },
+
+      // RFC 8631 discovery on the html pages. The Go handlers already set this
+      // on every api response, but an agent that arrived at the site rather
+      // than at an endpoint was landing on a page whose only Link relation was
+      // the canonical url — so the first document it could reach told it
+      // nothing about the api underneath. Listed page by page rather than
+      // /:path* on purpose: a wildcard also matches the api routes, and they
+      // would then carry this header twice.
+      ...PAGES.map((source) => ({
+        source,
+        headers: [{ key: "Link", value: SERVICE_LINKS }],
+      })),
+    ]
   },
 
   async rewrites() {
@@ -96,6 +125,16 @@ const nextConfig: NextConfig = {
       // RFC 9727 fixes the path, so this is the one route whose location is
       // not ours to choose.
       { source: "/.well-known/api-catalog", destination: api("/api/catalog") },
+      // The MCP registry manifest, at the path the registry and every client
+      // that reads one expect.
+      { source: "/server.json", destination: api("/api/server") },
+      // The AI Catalog specification fixes this path the same way RFC 9727
+      // fixes the one above.
+      { source: "/.well-known/ai-catalog.json", destination: api("/api/aicatalog") },
+      // /mcp is where a client looks for a remote MCP server, and it was a 404
+      // here while the server sat at /api/mcp. Same handler, both spellings, so
+      // nothing that already hardcoded the long path breaks.
+      { source: "/mcp", destination: api("/api/mcp") },
     ]
 
     const routes = [...discovery, ...prettyPaths()]

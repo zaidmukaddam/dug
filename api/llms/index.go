@@ -156,7 +156,11 @@ can tell. When something is:
 Both dates appear on the deprecated route's own responses, at least 180 days
 apart, and the replacement ships under a /v2/ prefix before either is set. A
 caller that checks for a Sunset header on each response has all the warning it
-needs; nothing here disappears without one.
+needs; nothing here disappears without one. Past its sunset a route answers 410
+with a Link to what replaced it.
+
+The full policy, including what does not count as a breaking change, is at
+/deprecation.
 
 ## Rate limits
 
@@ -179,24 +183,39 @@ pace against, and it is not a security control.`)
 
 ## Machine-readable
 
-    /llms.txt                   this file
-    /openapi.json               OpenAPI 3.1 for every command above
-    /.well-known/api-catalog    RFC 9727 linkset, one anchor per command
-    /api/mcp                    MCP server, Streamable HTTP, one tool per command
-    /developers                 the same surface written for a person
-    /about                      how a screen is read and what the guard refuses
-    /contact                    the issue tracker, and how to report a wrong answer
-    /privacy                    what is stored, which is nothing between requests
+    /llms.txt                     this file
+    /openapi.json                 OpenAPI 3.1 for every command above
+    /.well-known/api-catalog      RFC 9727 linkset, one anchor per command
+    /.well-known/ai-catalog.json  AI Catalog 1.0, the surfaces typed by protocol
+    /server.json                  MCP server manifest: name, version, transport
+    /mcp                          MCP server, Streamable HTTP, one tool per command
+    /developers                   the same surface written for a person
+    /deprecation                  how a route is retired, and how much notice
+    /about                        how a screen is read and what the guard refuses
+    /contact                      the issue tracker, and how to report a wrong answer
+    /privacy                      what is stored, which is nothing between requests
 
-Every response also carries them as Link headers: rel="service-desc" for the
+Every response carries them as Link headers too — rel="service-desc" for the
 OpenAPI document, rel="service-doc" for /developers, rel="describedby" for this
-file. A caller holding any single response can find the rest of the surface.
+file and the AI catalog — on the api responses and on the html pages alike, and
+the pages repeat them as <link> elements for a crawler that keeps the body and
+drops the headers. A caller holding any single response can find the rest of
+the surface.
+
+Two of those paths are fixed by their specifications rather than chosen here:
+/.well-known/api-catalog by RFC 9727, and /.well-known/ai-catalog.json by the
+AI Catalog specification. /server.json and /mcp are where a client looks by
+convention. /api/mcp is the same endpoint as /mcp and still answers.
 
 The pages negotiate markdown: send Accept: text/markdown to / or /about and
 the response is text/markdown rather than html, with Vary: Accept set.
 
-/api/mcp answers an agent that is somewhere else. It is a real Streamable HTTP
-endpoint, always there, serving every command above as its own tool.
+/mcp answers an agent that is somewhere else. It is a real Streamable HTTP
+endpoint, always there, serving every command above as its own tool. It is POST
+only: a GET is answered 405, because nothing here is server-initiated and there
+is no stream to open. That is the transport behaving as specified, not an
+endpoint that is down — confirm it with a POST, or read /server.json, which
+names the same URL and needs no request body.
 
 The browser app registers the same commands as WebMCP tools on
 document.modelContext, so an agent already in the page calls them without
@@ -234,6 +253,9 @@ attribute before concluding a page has no tools.
 	}
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	// Read by agents running in a page on some other origin as often as by
+	// anything server-side.
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Cache-Control", "public, s-maxage=86400, stale-while-revalidate=172800")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, b.String())

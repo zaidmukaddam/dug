@@ -47,6 +47,8 @@ const API_ENDPOINTS = new Set([
   "/api/mcp",
   "/api/guard",
   "/api/catalog",
+  "/api/aicatalog",
+  "/api/server",
 ])
 
 // The contract this surface answers under. Mirrors screen.APIVersion in Go;
@@ -173,6 +175,9 @@ function apiError(
 const PASS_THROUGH = new Set([
   "/llms.txt",
   "/openapi.json",
+  "/server.json",
+  "/.well-known/api-catalog",
+  "/.well-known/ai-catalog.json",
   "/robots.txt",
   "/sitemap.xml",
   "/opengraph-image",
@@ -242,8 +247,10 @@ ${RESOLVERS.map((resolver) => `- ${resolver.name} — \`${resolver.ip}\``).join(
 
 - [/llms.txt](${ORIGIN}/llms.txt) — the full grammar, the limits, and when to use this
 - [/openapi.json](${ORIGIN}/openapi.json) — OpenAPI 3.1, one operation per command
-- [/api/mcp](${ORIGIN}/api/mcp) — MCP server, Streamable HTTP, one tool per command
+- [/mcp](${ORIGIN}/mcp) — MCP server, Streamable HTTP, one tool per command
+- [/server.json](${ORIGIN}/server.json) — the MCP server manifest, if you are adding it to a client
 - [/developers](${ORIGIN}/developers) — calling it, the error model, versioning
+- [/deprecation](${ORIGIN}/deprecation) — how a route is retired, and how much notice
 - [/about](${ORIGIN}/about) — how a screen is read and what the guard refuses
 `
 }
@@ -280,7 +287,7 @@ ${RESOLVERS.map((resolver) => `- ${resolver.name} — \`${resolver.ip}\``).join(
 
 - [/llms.txt](${ORIGIN}/llms.txt)
 - [/openapi.json](${ORIGIN}/openapi.json)
-- [/api/mcp](${ORIGIN}/api/mcp)
+- [/mcp](${ORIGIN}/mcp)
 - [/developers](${ORIGIN}/developers)
 `
 }
@@ -296,7 +303,8 @@ generated from the url, so a path that is not listed below does not exist.
 - [/](${ORIGIN}/) — the terminal
 - [/llms.txt](${ORIGIN}/llms.txt) — every command, its arguments and its limits
 - [/openapi.json](${ORIGIN}/openapi.json) — OpenAPI 3.1 for the same surface
-- [/api/mcp](${ORIGIN}/api/mcp) — MCP server, one tool per command
+- [/mcp](${ORIGIN}/mcp) — MCP server, one tool per command
+- [/.well-known/ai-catalog.json](${ORIGIN}/.well-known/ai-catalog.json) — both surfaces, typed by protocol
 - [/developers](${ORIGIN}/developers) — calling it, the error model, versioning
 - [/sitemap.xml](${ORIGIN}/sitemap.xml) — every indexable page
 
@@ -315,6 +323,16 @@ const PAGES: Record<string, () => string> = {
   "/about": aboutMarkdown,
 }
 
+// Every path that renders a page, whether or not it has a markdown form above.
+//
+// The two are not the same set, and conflating them was a real bug: a request
+// for text/markdown fell through to the markdown 404, so /developers — the one
+// page an agent looking for an api is most likely to ask for — answered 404 to
+// any client that preferred markdown, while the same url in a browser was fine.
+// A page with no markdown generator serves its html; only a path that is not a
+// page at all is a 404.
+const PAGE_PATHS = new Set([...Object.keys(PAGES), "/developers", "/deprecation", "/contact", "/privacy"])
+
 export function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname
   const head = pathname.split("/")[1] ?? ""
@@ -324,7 +342,14 @@ export function proxy(request: NextRequest) {
   // an agent to call and it rewrites to /api/tls, so limiting only the /api
   // form would leave the documented surface uncounted — which it did, until
   // this was measured.
-  if (pathname.startsWith("/api/") || isCommand) {
+  //
+  // /mcp is the same trap in a second place: it rewrites to /api/mcp, and every
+  // tool call an agent makes runs a real command through it. Counting only the
+  // long spelling would make the quota opt-in. The other short paths added
+  // alongside it — /server.json, the two well-known documents — are static,
+  // cached for a day and cost nothing upstream, so they stay uncounted like
+  // /llms.txt and /openapi.json already are.
+  if (pathname.startsWith("/api/") || isCommand || pathname === "/mcp") {
     // Counted before anything else, so a refused request is cheap and a caller
     // that is over its quota is told so rather than served.
     const quota = take(request)
@@ -396,9 +421,11 @@ export function proxy(request: NextRequest) {
     if (page) {
       return markdown(page())
     }
-    // A command path is answered by Go in text or json; markdown is not one of
-    // its representations, so it passes through rather than being faked here.
-    if (!isCommand) {
+    // A command path is answered by Go in text or json, and a page with no
+    // markdown form answers in html. Neither is faked here; only a path that is
+    // neither gets the markdown 404, which exists to hand an agent the command
+    // list rather than an html error page it cannot read.
+    if (!isCommand && !PAGE_PATHS.has(pathname)) {
       return markdown(notFoundMarkdown(pathname), 404)
     }
     return NextResponse.next()

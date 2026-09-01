@@ -8,6 +8,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: "https://dug.sh", changeFrequency: "weekly", priority: 1 },
     { url: "https://dug.sh/developers", changeFrequency: "monthly", priority: 0.9 },
     { url: "https://dug.sh/about", changeFrequency: "monthly", priority: 0.8 },
+    { url: "https://dug.sh/deprecation", changeFrequency: "yearly", priority: 0.6 },
     { url: "https://dug.sh/contact", changeFrequency: "yearly", priority: 0.5 },
     { url: "https://dug.sh/privacy", changeFrequency: "yearly", priority: 0.3 },
   ]

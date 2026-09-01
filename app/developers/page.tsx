@@ -9,7 +9,10 @@ const DESCRIPTION =
   "The dug REST API: every command as a GET, no key and no signup, in text, JSON or markdown. Error model, versioning policy, OpenAPI and MCP."
 
 export const metadata: Metadata = {
-  title: "Developers",
+  // "dug API documentation" rather than the template's "Developers · dug".
+  // A name-based search is for the product plus a developer word, and the
+  // template put the product name last and the generic word first.
+  title: { absolute: "dug API documentation" },
   description: DESCRIPTION,
   alternates: { canonical: "/developers" },
   openGraph: {
@@ -152,43 +155,41 @@ export default function Developers() {
           </div>
         </Frame>
 
-        <Frame title="versioning">
-          <p className="max-w-3xl text-sm text-pretty text-graph-muted">
-            The paths are unversioned and additive. New commands, blocks and fields may appear
-            at any time, so parse defensively and ignore what you do not recognise. A change
-            that would break an existing caller ships under a{" "}
-            <span className="text-foreground">/v2/</span> prefix instead of changing these.
-          </p>
+        {/* The policy itself moved to /deprecation. It was a fragment here, and
+            a fragment cannot be indexed, cited or linked from a catalog — which
+            is exactly why nothing ever found it. This keeps the part a caller
+            needs while reading about the API and sends them to the page for the
+            timeline. */}
+        <Frame title="versioning and deprecation">
+          <div className="flex flex-col gap-4">
+            <p className="max-w-3xl text-sm text-pretty text-graph-muted">
+              The paths are unversioned and additive. New commands, blocks and fields may appear
+              at any time, so parse defensively and ignore what you do not recognise. A change
+              that would break an existing caller ships under a{" "}
+              <span className="text-foreground">/v2/</span> prefix instead of changing these.
+            </p>
+            <FrameRows
+              rows={[
+                {
+                  label: "X-API-Version",
+                  value: "on every response, naming the contract it ran under",
+                  accent: true,
+                },
+                { label: "Deprecation", value: "an http-date, the day it became deprecated" },
+                { label: "Sunset", value: "an http-date, the day it stops answering" },
+                { label: "notice", value: "at least 180 days between the two dates" },
+              ]}
+            />
+            <p className="text-xs text-graph-muted">
+              Nothing is deprecated today, and the absence of a Deprecation header is how you can
+              tell. The full timeline is at{" "}
+              <Link href="/deprecation" className="text-graph-accent">
+                /deprecation
+              </Link>
+              .
+            </p>
+          </div>
         </Frame>
-
-        {/* Its own frame with a stable anchor, so the policy can be linked to
-            rather than quoted. An agent deciding whether to integrate asks two
-            questions — how will I be told, and how long do I get — and both
-            answers belong somewhere citable. */}
-        <div id="deprecation" className="scroll-mt-6">
-          <Frame title="deprecation policy">
-            <div className="flex flex-col gap-4">
-              <p className="max-w-3xl text-sm text-pretty text-graph-muted">
-                Nothing is deprecated today, and the absence of a{" "}
-                <span className="text-foreground">Deprecation</span> header is how you can tell.
-                Checking for one on each response is enough; nothing here disappears without it.
-              </p>
-              <FrameRows
-                rows={[
-                  {
-                    label: "Deprecation",
-                    value: "an http-date, the day it became deprecated (RFC 9745)",
-                    accent: true,
-                  },
-                  { label: "Sunset", value: "an http-date, the day it stops answering (RFC 8594)" },
-                  { label: "Link", value: 'rel="deprecation", pointing at what to read' },
-                  { label: "notice", value: "at least 180 days between the two dates" },
-                  { label: "replacement", value: "ships under /v2/ before either is set" },
-                ]}
-              />
-            </div>
-          </Frame>
-        </div>
 
         <h2 className="pt-2 text-xl">Endpoints</h2>
 
@@ -215,7 +216,10 @@ export default function Developers() {
             <DevLink href="/llms.txt" note="the grammar, the limits, when to use this" />
             <DevLink href="/openapi.json" note="openapi 3.1, one operation per command" />
             <DevLink href="/.well-known/api-catalog" note="rfc 9727 linkset" />
-            <DevLink href="/api/mcp" note="mcp over streamable http" />
+            <DevLink href="/.well-known/ai-catalog.json" note="ai catalog, typed by protocol" />
+            <DevLink href="/server.json" note="mcp server manifest" />
+            <DevLink href="/mcp" note="mcp over streamable http, post only" />
+            <DevLink href="/deprecation" note="how a route is retired" />
             <DevLink href="/contact" note="report a wrong answer" />
           </ul>
         </Frame>

@@ -69,7 +69,16 @@ hand one client's representation to another.
 | --- | --- |
 | `/llms.txt` | The grammar, the envelope, and the limits |
 | `/openapi.json` | OpenAPI 3.1, one operation per command |
-| `/api/mcp` | MCP server, Streamable HTTP, one tool per command |
+| `/.well-known/api-catalog` | RFC 9727 linkset, one anchor per command |
+| `/.well-known/ai-catalog.json` | AI Catalog 1.0, both surfaces typed by protocol |
+| `/server.json` | MCP server manifest, the registry's own shape |
+| `/mcp` | MCP server, Streamable HTTP, one tool per command |
+| `/deprecation` | How a route is retired, and how much notice you get |
+
+Every response names the first three as `Link` relations — `service-desc`,
+`service-doc`, `describedby` — on the API and on the HTML pages alike, so a
+caller holding any single response can find the rest. `/api/mcp` is the same
+endpoint as `/mcp` and still answers.
 
 The MCP server is stateless and issues no session: nothing is stored between
 queries anywhere else here either. Its tools dispatch to the same handlers the
@@ -130,6 +139,9 @@ app/error.tsx     the route error boundary, in the same visual language
 api/<route>/      Vercel Go functions, one exported Handler each
 api/llms          llms.txt, generated from pkg/commands
 api/openapi       OpenAPI 3.1, generated from pkg/commands
+api/catalog       RFC 9727 api-catalog, one anchor per command
+api/aicatalog     AI Catalog, the mcp and rest surfaces typed by protocol
+api/server        server.json, the MCP registry manifest
 api/mcp           MCP server, dispatching to the other handlers
 pkg/guard         address validation, used by every dialer
 pkg/commands      the grammar, mirrored by app/commands/grammar.ts

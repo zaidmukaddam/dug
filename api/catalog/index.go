@@ -15,12 +15,13 @@ import (
 	"strings"
 
 	"github.com/zaidmukaddam/dug/pkg/commands"
+	"github.com/zaidmukaddam/dug/pkg/screen"
 )
 
 type object = map[string]any
 
 func Handler(w http.ResponseWriter, r *http.Request) {
-	base := origin(r)
+	base := screen.Origin(r)
 
 	// The origin itself, described by the three documents that describe the
 	// whole surface. rel values are the registered ones: service-desc for the
@@ -35,8 +36,17 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			"service-doc": []any{
 				object{"href": base + "/developers", "type": "text/html"},
 			},
+			// Three documents describe this origin rather than one. llms.txt is
+			// the prose, and the AI catalog is the same surface typed by
+			// protocol, which is the form an agent runtime reads before it
+			// knows whether it can connect at all.
 			"describedby": []any{
 				object{"href": base + "/llms.txt", "type": "text/plain"},
+				object{
+					"href":  base + "/.well-known/ai-catalog.json",
+					"type":  "application/ai-catalog+json",
+					"title": "AI catalog: the MCP and REST surfaces, typed by protocol",
+				},
 			},
 			"status": []any{
 				object{"href": base + "/src", "type": "text/plain"},
@@ -45,9 +55,17 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// The MCP server gets its own anchor rather than a link on the origin.
 		// It is a distinct protocol at a distinct endpoint, and an agent that
 		// found no tools on the page needs to be told where they actually are.
+		//
+		// Anchored at /mcp, the path a client tries first. /api/mcp is the same
+		// endpoint and still answers.
 		object{
-			"anchor": base + "/api/mcp",
+			"anchor": base + "/mcp",
 			"describedby": []any{
+				object{
+					"href":  base + "/server.json",
+					"type":  "application/json",
+					"title": "MCP server manifest: name, version and transport",
+				},
 				object{
 					"href":  base + "/llms.txt",
 					"type":  "text/plain",
@@ -87,6 +105,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// The media type RFC 9264 defines for a JSON linkset. Not application/json:
 	// a client content-negotiating for a linkset is asking for this shape.
 	w.Header().Set("Content-Type", "application/linkset+json")
+	// A well-known document is read by clients that are not this origin. That
+	// is the whole point of fixing its path, and it does not work from a
+	// browser without this.
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Cache-Control", "public, s-maxage=86400, stale-while-revalidate=172800")
 	w.WriteHeader(http.StatusOK)
 	w.Write(body)
@@ -96,15 +118,4 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 // path fragment here would break at its first slash.
 func escapePointer(path string) string {
 	return strings.ReplaceAll(strings.ReplaceAll(path, "~", "~0"), "/", "~1")
-}
-
-func origin(r *http.Request) string {
-	scheme := "https"
-	if strings.HasPrefix(r.Host, "127.0.0.1") || strings.HasPrefix(r.Host, "localhost") {
-		scheme = "http"
-	}
-	if forwarded := r.Header.Get("X-Forwarded-Proto"); forwarded == "http" || forwarded == "https" {
-		scheme = forwarded
-	}
-	return scheme + "://" + r.Host
 }

@@ -36,8 +36,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				"Versioning: " + screen.VersionPolicy,
 			"license": object{"name": "MIT", "identifier": "MIT"},
 		},
-		"servers": []any{object{"url": origin(r)}},
-		"paths":   paths,
+		"servers": []any{object{"url": screen.Origin(r)}},
+		// Where a reader goes for the parts a schema cannot carry: the error
+		// model in prose, the rate limit, and the deprecation policy. A caller
+		// deciding whether to integrate needs that page, and until now the only
+		// pointer to it was an HTTP Link header on a live response.
+		"externalDocs": object{
+			"url":         screen.Origin(r) + "/developers",
+			"description": "The same API written for a person: representations, errors, quota, versioning and the deprecation policy.",
+		},
+		"paths": paths,
 		"components": object{"schemas": object{
 			"Payload":   payloadSchema(),
 			"Error":     errorSchema(),
@@ -51,7 +59,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	// The media type IANA registers for an OpenAPI document, rather than plain
+	// application/json. A tool sniffing for an API description matches on this;
+	// a client that only parses JSON is unaffected, because it still is JSON.
+	w.Header().Set("Content-Type", "application/vnd.oai.openapi+json;version=3.1")
+	// Fetched cross-origin by browser-side agents and by every online OpenAPI
+	// viewer, both of which get an opaque failure without this.
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Cache-Control", "public, s-maxage=86400, stale-while-revalidate=172800")
 	w.WriteHeader(http.StatusOK)
 	w.Write(body)
@@ -276,22 +290,4 @@ func firstWordAfter(example string) string {
 		return ""
 	}
 	return fields[1]
-}
-
-func origin(r *http.Request) string {
-	scheme := "https"
-	if isLocal(r.Host) {
-		scheme = "http"
-	}
-	// Vercel terminates TLS ahead of the function, so the scheme only survives
-	// in this header. Constrained to the two known values: it is client-set
-	// text, and it lands in a document other tools read as authoritative.
-	if forwarded := r.Header.Get("X-Forwarded-Proto"); forwarded == "http" || forwarded == "https" {
-		scheme = forwarded
-	}
-	return scheme + "://" + r.Host
-}
-
-func isLocal(host string) bool {
-	return strings.HasPrefix(host, "127.0.0.1") || strings.HasPrefix(host, "localhost")
 }

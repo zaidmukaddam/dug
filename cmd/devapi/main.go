@@ -9,6 +9,7 @@ import (
 
 	addrapi "github.com/zaidmukaddam/dug/api/addr"
 	aeoapi "github.com/zaidmukaddam/dug/api/aeo"
+	aicatalogapi "github.com/zaidmukaddam/dug/api/aicatalog"
 	catalogapi "github.com/zaidmukaddam/dug/api/catalog"
 	delegateapi "github.com/zaidmukaddam/dug/api/delegate"
 	fetchapi "github.com/zaidmukaddam/dug/api/fetch"
@@ -24,6 +25,7 @@ import (
 	rdapapi "github.com/zaidmukaddam/dug/api/rdap"
 	resolveapi "github.com/zaidmukaddam/dug/api/resolve"
 	seoapi "github.com/zaidmukaddam/dug/api/seo"
+	serverapi "github.com/zaidmukaddam/dug/api/server"
 	srcapi "github.com/zaidmukaddam/dug/api/src"
 	tlsapi "github.com/zaidmukaddam/dug/api/tls"
 	vsapi "github.com/zaidmukaddam/dug/api/vs"
@@ -38,6 +40,7 @@ func main() {
 	routes := map[string]http.HandlerFunc{
 		"/api/addr":      addrapi.Handler,
 		"/api/aeo":       aeoapi.Handler,
+		"/api/aicatalog": aicatalogapi.Handler,
 		"/api/catalog":   catalogapi.Handler,
 		"/api/delegate":  delegateapi.Handler,
 		"/api/fetch":     fetchapi.Handler,
@@ -53,6 +56,7 @@ func main() {
 		"/api/rdap":      rdapapi.Handler,
 		"/api/resolve":   resolveapi.Handler,
 		"/api/seo":       seoapi.Handler,
+		"/api/server":    serverapi.Handler,
 		"/api/src":       srcapi.Handler,
 		"/api/tls":       tlsapi.Handler,
 		"/api/vs":        vsapi.Handler,
