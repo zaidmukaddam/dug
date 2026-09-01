@@ -74,7 +74,6 @@ hand one client's representation to another.
 | `/.well-known/mcp/server-card.json` | SEP-1649 server card: every tool, without connecting |
 | `/server.json` | MCP server manifest, the registry's own shape |
 | `/mcp` | MCP server, Streamable HTTP, one tool per command |
-| `/plan` | POST a sentence, get an investigation. For the prompt, not for agents |
 | `/deprecation` | How a route is retired, and how much notice you get |
 
 Every response names the first three as `Link` relations — `service-desc`,

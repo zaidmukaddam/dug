@@ -351,9 +351,14 @@ export function proxy(request: NextRequest) {
   // alongside it — /server.json, the two well-known documents — are static,
   // cached for a day and cost nothing upstream, so they stay uncounted like
   // /llms.txt and /openapi.json already are.
-  // /plan calls a model, which is the most expensive thing on the site, so it
-  // is counted with the rest.
-  if (pathname.startsWith("/api/") || isCommand || pathname === "/mcp" || pathname === "/plan") {
+  // A Server Action is a POST to the page's own url carrying a Next-Action
+  // header, so it cannot be matched by path. The planner is one, and it calls
+  // a model, which is the most expensive thing on the site. Counting every
+  // action rather than the one that exists today means the next one is
+  // covered before anyone remembers to add it.
+  const isAction = request.method === "POST" && request.headers.has("next-action")
+
+  if (pathname.startsWith("/api/") || isCommand || pathname === "/mcp" || isAction) {
     // Counted before anything else, so a refused request is cheap and a caller
     // that is over its quota is told so rather than served.
     const quota = take(request)

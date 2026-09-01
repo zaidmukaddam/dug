@@ -252,10 +252,10 @@ and return the same payloads, and an agent here can already do that by calling
 them itself. What it cannot do is leave the evidence somewhere a person is
 looking, which is the only thing the investigation adds.
 
-The page also has a planner of its own at POST /plan, which turns a sentence
-into a plan for a person typing at the prompt without an agent. You do not
-need it: you are the planner. Call dug_investigate with your own steps rather
-than spending a model call to have dug guess at them.
+The prompt also has a planner of its own for a person typing without an agent:
+a sentence in plain words becomes a plan, and the case is headed "planned by
+dug". It is not an endpoint and you do not need it. You are the planner. Call
+dug_investigate with your own steps.
 
     const tools = await document.modelContext.getTools()
     await document.modelContext.executeTool(tool, '{"target":"github.com"}')

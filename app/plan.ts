@@ -1,3 +1,5 @@
+"use server"
+
 // The planner: a symptom in, an investigation out.
 //
 // This is the one place dug calls a model itself, and it exists for a person
@@ -7,19 +9,24 @@
 // that there is a topic called mail, which is the thing they do not know when
 // they have the problem.
 //
-// Not under /api, where Vercel routes to the Go functions. Rate limited by the
-// proxy like everything else that costs something.
+// A Server Action rather than a route, because the only caller is the prompt
+// on this page. There is no url to document, no fetch to hand-roll, no error
+// shape to keep in step with a client, and no public endpoint for an agent to
+// find and be told not to use. It is still a POST anyone can send once they
+// have the action id, so the input is validated as untrusted regardless.
 
 import { openai } from "@ai-sdk/openai"
 import { generateText, NoObjectGeneratedError, Output } from "ai"
 import { z } from "zod"
 
-import { COMMANDS } from "@/app/commands/grammar"
+import { COMMANDS, type ParseFailure } from "@/app/commands/grammar"
 import { INVESTIGATIONS } from "@/lib/investigations"
 
-// A public, keyless site. Nothing typed here should be stored anywhere it can
-// be read back, which is also what /privacy promises.
 const MODEL = "gpt-5.6-luna"
+
+export type PlanOutcome =
+  | { ok: true; question: string; target: string; steps: string[] }
+  | { ok: false; failure: ParseFailure }
 
 const Plan = z.object({
   question: z.string().min(1).max(200).describe("the question, in the words the person used"),
@@ -33,6 +40,8 @@ const Plan = z.object({
 
 const RUNNABLE = COMMANDS.filter((spec) => spec.endpoint)
 const VERBS = new Set<string>(RUNNABLE.map((spec) => spec.name))
+
+const HINT = "a command still works: TLS example.com, or WHY mail example.com"
 
 function system(): string {
   const commands = RUNNABLE.map(
@@ -73,21 +82,17 @@ function bareHost(value: string): string {
   return host.replace(/\.$/, "")
 }
 
-export async function POST(request: Request) {
-  if (!process.env.OPENAI_API_KEY) {
-    return Response.json(
-      { error: "no_planner", message: "the planner is not configured on this deployment" },
-      { status: 503 }
-    )
-  }
+function refuse(input: string, message: string): PlanOutcome {
+  return { ok: false, failure: { input, message, hint: HINT } }
+}
 
-  const body = await request.json().catch(() => null)
-  const ask = typeof body?.ask === "string" ? body.ask.trim() : ""
-  if (!ask || ask.length > 500) {
-    return Response.json(
-      { error: "bad_ask", message: "send a question of up to 500 characters as {ask}" },
-      { status: 400 }
-    )
+export async function plan(ask: string): Promise<PlanOutcome> {
+  const text = typeof ask === "string" ? ask.trim() : ""
+  if (!text || text.length > 500) {
+    return refuse(text, "ask in up to 500 characters")
+  }
+  if (!process.env.OPENAI_API_KEY) {
+    return refuse(text, "the planner is not configured on this deployment")
   }
 
   try {
@@ -95,37 +100,29 @@ export async function POST(request: Request) {
       model: openai(MODEL),
       output: Output.object({ schema: Plan }),
       system: system(),
-      prompt: ask,
+      prompt: text,
       maxOutputTokens: 400,
+      // A public, keyless site. Nothing typed here should be kept anywhere it
+      // can be read back, which is also what /privacy promises.
       providerOptions: { openai: { store: false } },
     })
 
     const target = bareHost(output.target)
     // A step whose verb is not a command would only ever render as a failed
-    // slot, so drop it here and say so, rather than show a plan that was never
-    // going to run.
+    // slot, so drop it here rather than show a plan that was never going to
+    // run.
     const steps = output.steps
       .map((step) => step.trim())
       .filter((step) => VERBS.has(step.split(/\s+/)[0]?.toUpperCase() ?? ""))
 
     if (!target || steps.length === 0) {
-      return Response.json(
-        { error: "no_plan", message: "could not turn that into commands. try naming the domain" },
-        { status: 422 }
-      )
+      return refuse(text, "could not turn that into commands. try naming the domain")
     }
-
-    return Response.json({ question: output.question, target, steps })
+    return { ok: true, question: output.question, target, steps }
   } catch (error) {
     if (NoObjectGeneratedError.isInstance(error)) {
-      return Response.json(
-        { error: "no_plan", message: "could not turn that into commands. try naming the domain" },
-        { status: 422 }
-      )
+      return refuse(text, "could not turn that into commands. try naming the domain")
     }
-    return Response.json(
-      { error: "planner_failed", message: "the planner did not answer. try a command instead" },
-      { status: 502 }
-    )
+    return refuse(text, "the planner did not answer")
   }
 }

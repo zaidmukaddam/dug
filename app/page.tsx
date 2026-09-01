@@ -19,6 +19,7 @@ import { Screen } from "@/app/screens/screen"
 import { ThemeToggle } from "@/components/theme-provider"
 import { cacheKey, cacheSize, readCache, writeCache, type Payload } from "@/lib/cache"
 import { easeOutCubic } from "@/lib/graph-motion"
+import { plan, type PlanOutcome } from "@/app/plan"
 import { INVESTIGATIONS, type Investigation, matchInvestigation } from "@/lib/investigations"
 import { RESOLVERS } from "@/lib/resolvers"
 import { cn } from "@/lib/utils"
@@ -119,33 +120,13 @@ function looksLikeAQuestion(text: string): boolean {
   return words.length >= 3 && !VERBS.has(words[0].toUpperCase())
 }
 
-type PlanOutcome =
-  | { ok: true; question: string; target: string; steps: string[] }
-  | { ok: false; failure: ParseFailure }
-
+// The action handles every outcome it can name. What it cannot is the transport
+// itself failing, which after a deployment includes the client holding an
+// action id the server no longer has. That surfaces as a sentence under the
+// prompt with a command to fall back on, and a reload recovers it.
 async function askPlanner(ask: string): Promise<PlanOutcome> {
   try {
-    const response = await fetch("/plan", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ ask }),
-    })
-    const body = (await response.json()) as
-      | { question: string; target: string; steps: string[] }
-      | { error: string; message: string }
-
-    if (!response.ok || "error" in body) {
-      const message = "message" in body ? body.message : "the planner did not answer"
-      return {
-        ok: false,
-        failure: {
-          input: ask,
-          message,
-          hint: "a command still works: TLS example.com, or WHY mail example.com",
-        },
-      }
-    }
-    return { ok: true, ...body }
+    return await plan(ask)
   } catch {
     return {
       ok: false,
