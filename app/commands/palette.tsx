@@ -29,6 +29,8 @@ export type PaletteProps = {
   // names the key while it does something. An advertised shortcut that does
   // nothing is how the dark mode hotkey read for months.
   clearable: boolean
+  // How many WebMCP tools are registered, or 0 where the API is unavailable.
+  agentTools: number
   history: string[]
   placeholder: string
 }
@@ -83,6 +85,7 @@ export function Palette({
   onClear,
   running,
   clearable,
+  agentTools,
   history,
   placeholder,
 }: PaletteProps) {
@@ -202,6 +205,18 @@ export function Palette({
                 look broken the one time most people try it. */}
             {history.length > 0 ? " · up and down walk history" : null}
             {clearable ? " · esc clears the screen" : null}
+            {/* What is on the page for an agent, said where a person will see
+                it. Deliberately "available to" and not "an agent is here": the
+                tools are registered either way, and only the first is known. */}
+            {agentTools > 0 ? (
+              <>
+                {" · "}
+                <span className="text-graph-accent">
+                  <span className="tabular-nums">{agentTools}</span> tools available to an agent in
+                  this page
+                </span>
+              </>
+            ) : null}
           </>
         )}
       </p>

@@ -29,14 +29,19 @@ import { useWebMcp } from "@/lib/webmcp"
 // A case is created before its first lookup returns and filled in as they
 // arrive, so the person watches the evidence assemble rather than waiting on a
 // spinner and being handed a finished page.
+// Who asked. Rendered on the answer, because a page two people are using at
+// once should say which of them a screen came from.
+type Source = "you" | "agent"
+
 type Entry =
-  | { kind: "screen"; id: number; label: string; payload: Payload }
+  | { kind: "screen"; id: number; label: string; payload: Payload; source: Source }
   | {
       kind: "case"
       id: number
       question: string
       target: string
       planned: string[]
+      source: Source
       // Sparse until the plan finishes: index n is the nth planned command.
       steps: (CaseStep | undefined)[]
     }
@@ -132,10 +137,10 @@ export default function Page() {
     focus()
   }, [focus])
 
-  const push = useCallback((label: string, payload: Payload) => {
+  const push = useCallback((label: string, payload: Payload, source: Source) => {
     nextId.current += 1
     setEntries((current) => [
-      { kind: "screen" as const, id: nextId.current, label, payload },
+      { kind: "screen" as const, id: nextId.current, label, payload, source },
       ...current,
     ].slice(0, 12))
   }, [])
@@ -161,7 +166,7 @@ export default function Page() {
   // why lookup and perform are separate: a cache hit resolves in a microtask
   // and would otherwise show a frame of skeleton on its way past.
   const run = useCallback(
-    async (text: string): Promise<Payload | null> => {
+    async (text: string, source: Source = "you"): Promise<Payload | null> => {
       const step = lookup(text)
       const fetching = step.kind === "fetch"
       if (fetching) {
@@ -175,7 +180,7 @@ export default function Page() {
           return null
         }
         setFailure(null)
-        push(outcome.label, outcome.payload)
+        push(outcome.label, outcome.payload, source)
         return outcome.payload
       } finally {
         if (fetching) {
@@ -192,11 +197,11 @@ export default function Page() {
   // lands, so the first is readable while the fourth is still in flight. That
   // is the reason this renders onto a page instead of returning a summary.
   const investigate = useCallback(
-    async (question: string, target: string, planned: string[]) => {
+    async (question: string, target: string, planned: string[], source: Source = "agent") => {
       nextId.current += 1
       const caseId = nextId.current
       setEntries((current) => [
-        { kind: "case" as const, id: caseId, question, target, planned, steps: [] },
+        { kind: "case" as const, id: caseId, question, target, planned, source, steps: [] },
         ...current,
       ].slice(0, 12))
 
@@ -224,7 +229,10 @@ export default function Page() {
     [pushInto]
   )
 
-  useWebMcp(run, investigate)
+  // Every tool call arrives already labelled, so an answer on screen says who
+  // asked for it without run() having to guess.
+  const runForAgent = useCallback((text: string) => run(text, "agent"), [run])
+  const webmcp = useWebMcp(runForAgent, investigate)
 
   const submit = useCallback(async () => {
     const text = input.trim()
@@ -309,6 +317,7 @@ export default function Page() {
           onHistory={walkHistory}
           onClear={clear}
           clearable={entries.length > 0}
+          agentTools={webmcp.state === "registered" ? webmcp.tools : 0}
           running={status === "running"}
           history={history}
           placeholder={PLACEHOLDER}
@@ -355,7 +364,12 @@ export default function Page() {
                 focus()
               }}
               onInvestigate={(investigation, target) => {
-                void investigate(investigation.question, target, investigation.steps(target))
+                void investigate(
+                  investigation.question,
+                  target,
+                  investigation.steps(target),
+                  "you"
+                )
               }}
             />
           ) : null}
@@ -374,14 +388,28 @@ export default function Page() {
                 target={entry.target}
                 steps={entry.steps}
                 planned={entry.planned}
+                byAgent={entry.source === "agent"}
               />
             ) : (
-              <Screen key={entry.id} payload={entry.payload} />
+              <div key={entry.id} className="flex flex-col gap-3">
+                {entry.source === "agent" ? <AskedByAgent /> : null}
+                <Screen payload={entry.payload} />
+              </div>
             )
           )}
         </div>
       ) : null}
     </main>
+  )
+}
+
+// Two people are using this page and only one of them typed. Marking the
+// answers an agent asked for is what makes that visible instead of implied.
+export function AskedByAgent() {
+  return (
+    <p className="flex items-center gap-2 text-xs tracking-wide text-graph-accent uppercase">
+      <span aria-hidden="true">[~]</span> asked by your agent
+    </p>
   )
 }
 

@@ -22,7 +22,7 @@
 
 import "@mcp-b/global"
 
-import { useEffectEvent } from "react"
+import { useEffectEvent, useState } from "react"
 
 import { COMMANDS } from "@/app/commands/grammar"
 import { useMountEffect } from "@/hooks/use-mount-effect"
@@ -168,6 +168,14 @@ function example(id: string): string {
   return `"${investigation.question}" with steps ${JSON.stringify(investigation.steps("example.com"))}`
 }
 
+// What the page is allowed to say about the tools it put up.
+//
+// "registered" means the tools are on the page and callable. It does not mean
+// an agent is reading them, and the page must not claim otherwise: @mcp-b/global
+// installs the API in an ordinary browser too, so this is true whether or not
+// anyone is listening. The honest claim is what is available, not who is there.
+export type WebMcpStatus = { state: WebMcpState; tools: number }
+
 export function useWebMcp(
   run: (text: string) => Promise<Payload | null>,
   investigate: (
@@ -175,19 +183,29 @@ export function useWebMcp(
     target: string,
     steps: string[]
   ) => Promise<{ command: string; payload: Payload }[]>
-) {
+): WebMcpStatus {
   // Tools are registered once for the life of the page, so a tool invoked ten
   // minutes later must reach the current run rather than the one that happened
   // to be in scope at mount.
   const runLatest = useEffectEvent(run)
   const investigateLatest = useEffectEvent(investigate)
 
+  const [status, setStatus] = useState<WebMcpStatus>({ state: "unsupported", tools: 0 })
+
   useMountEffect(() => {
+    // The attribute is for an agent reading the dom; the state is for the page
+    // telling a person the same thing. One call sets both so they cannot
+    // disagree.
+    const settle = (state: WebMcpState, count: number) => {
+      mark(state)
+      setStatus({ state, tools: count })
+    }
+
     const context = modelContext()
     if (!context) {
       // The ordinary path today, and not a failure. The remote server at
       // /api/mcp serves the same commands to an agent that is not in the page.
-      mark("unsupported")
+      settle("unsupported", 0)
       return
     }
 
@@ -380,20 +398,21 @@ export function useWebMcp(
             wait(Math.max(0, deadline - Date.now())).then(() => null),
           ])
           if (!controller.signal.aborted && results !== null) {
-            mark(results.every(Boolean) ? "registered" : "failed")
+            const ok = results.every(Boolean)
+            settle(ok ? "registered" : "failed", ok ? tools.length : 0)
           }
           return
         }
 
         if (tools.every((tool) => registered.has(tool.name))) {
-          mark("registered")
+          settle("registered", tools.length)
           return
         }
         if (Date.now() >= deadline) {
           // Aborted means unmounted, and the tools going away with it is not a
           // failure. Say nothing rather than report one that did not happen.
           if (!controller.signal.aborted) {
-            mark("failed")
+            settle("failed", 0)
           }
           return
         }
@@ -403,4 +422,6 @@ export function useWebMcp(
 
     return () => controller.abort()
   })
+
+  return status
 }
