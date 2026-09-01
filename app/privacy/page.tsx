@@ -48,11 +48,11 @@ export default function Privacy() {
         <h2 className="text-xl">Privacy</h2>
 
         <p className="max-w-3xl text-sm text-pretty text-muted-foreground">
-          dug has no accounts, no database and no session. There is nothing to sign up for and
-          nothing to sign in to, so there is no profile to build. A query is answered from the
-          upstreams it names and then forgotten; the only copy that outlives the request is the
-          one in your own browser tab and in a shared HTTP cache, under the lifetime the answer
-          itself declares.
+          dug has no accounts, no database and no session. There’s nothing to sign up for and
+          nothing to sign in to, so there’s no profile to build. Each query goes to the
+          upstreams it names, comes back, and then dug forgets it. The only copies that outlive
+          the request are the one in your browser tab and the one in a shared HTTP cache, held
+          for the lifetime the answer itself declares.
         </p>
 
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
@@ -89,8 +89,8 @@ export default function Privacy() {
                 ]}
               />
               <p className="text-xs text-graph-muted">
-                Both are injected only on a deployment, so a local run of this project sends no
-                beacons at all.
+                Vercel injects both only on a deployment, so a local run of this project sends
+                no beacons at all.
               </p>
             </div>
           </Frame>
@@ -99,15 +99,15 @@ export default function Privacy() {
         <Frame title="what your queries reach">
           <div className="flex flex-col gap-4">
             <p className="max-w-3xl text-sm text-pretty text-graph-muted">
-              A lookup is made from the deployment, not from your browser, so the target sees a
-              request from this service rather than from you. That cuts both ways and is worth
-              stating plainly: your address is not exposed to the domain you ask about, and the
-              domain you ask about is visible to the resolvers and registries the command names.
+              The deployment makes the lookup, not your browser, so the target sees a request
+              from this service, not from you. That cuts both ways. Your address isn’t exposed
+              to the domain you ask about, and the domain you ask about is visible to the
+              resolvers and registries the command names.
             </p>
             <p className="max-w-3xl text-sm text-pretty text-graph-muted">
               PORTS is the one command that completes a TCP handshake against the target, so it
-              appears in that target&apos;s logs as a connection from this deployment. Only run
-              it against hosts you are allowed to probe.
+              appears in that target’s logs as a connection from this deployment. Only run it
+              against hosts you’re allowed to probe.
             </p>
           </div>
         </Frame>

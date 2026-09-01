@@ -53,13 +53,13 @@ export default function Developers() {
         <h2 className="text-xl">The dug API</h2>
 
         <p className="max-w-3xl text-sm text-pretty text-muted-foreground">
-          Every command is a GET. There is no key, no signup and no request body to build,
-          and the quota is published on every response rather than negotiated. The same URL
-          answers in three representations, and the browser app you can see at{" "}
+          Every command is a GET. There’s no key, no signup and no request body to build, and
+          every response publishes the quota. The same URL answers in three representations,
+          and the browser app at{" "}
           <Link href="/" className="text-graph-accent">
             /
           </Link>{" "}
-          is one of them rather than a separate product.
+          is one of them, not a separate product.
         </p>
 
         <Frame title="calling it">
@@ -95,17 +95,17 @@ export default function Developers() {
                 { label: "application/json", value: "Accept: application/json, or ?format=json" },
                 { label: "text/markdown", value: "Accept: text/markdown, on the pages" },
                 { label: "text/html", value: "the browser app, at /" },
-                { label: "Vary", value: "Accept, User-Agent — negotiation is cache safe" },
-                { label: "Cache-Control", value: "derived from the answer's own ttl, floored at 30s" },
+                { label: "Vary", value: "Accept, User-Agent, so negotiation is cache safe" },
+                { label: "Cache-Control", value: "derived from the answer’s own TTL, floored at 30s" },
               ]}
             />
           </Frame>
 
           <Frame title="auth">
             <p className="text-sm text-graph-muted">
-              None. Reads are open and there is no key to obtain, so there is nothing here to
-              sandbox. Every destination is validated before connect, which is what makes that
-              safe to offer. The quota below applies per address rather than per key.
+              None. Reads are open and there’s no key to obtain, so there’s nothing here to
+              sandbox. The guard validates every destination before connect, which is what makes
+              open reads safe. The quota below applies per address, since there’s no key.
             </p>
           </Frame>
         </div>
@@ -141,16 +141,16 @@ export default function Developers() {
                 { label: "RateLimit-Limit", value: "60 requests per window", accent: true },
                 { label: "RateLimit-Remaining", value: "what is left in this window" },
                 { label: "RateLimit-Reset", value: "seconds until it resets" },
-                { label: "RateLimit-Policy", value: '"fixed";q=60;w=60 — RFC 9331' },
+                { label: "RateLimit-Policy", value: '"fixed";q=60;w=60, per RFC 9331' },
                 { label: "over the quota", value: "429, error.code rate_limited, Retry-After" },
               ]}
             />
             <p className="max-w-3xl text-sm text-pretty text-graph-muted">
-              Sent on every response and not only on a refusal, so a caller can pace itself
-              rather than discover the ceiling by hitting it. Read it honestly: the count
-              lives in the memory of one proxy instance and a serverless deployment runs
-              several, so a client spread across them gets more than 60. It is a real
-              backstop and a truthful number to pace against. It is not a security control.
+              Every response carries these, including a 200, so a caller can pace itself
+              instead of discovering the ceiling by hitting it. The count lives in the memory
+              of one proxy instance, and a serverless deployment runs more than one, so a
+              client spread across instances gets more than 60. It’s a real backstop and a
+              truthful number to pace against. It isn’t a security control.
             </p>
           </div>
         </Frame>
@@ -164,7 +164,7 @@ export default function Developers() {
           <div className="flex flex-col gap-4">
             <p className="max-w-3xl text-sm text-pretty text-graph-muted">
               The paths are unversioned and additive. New commands, blocks and fields may appear
-              at any time, so parse defensively and ignore what you do not recognise. A change
+              at any time, so parse defensively and ignore what you don’t recognise. A change
               that would break an existing caller ships under a{" "}
               <span className="text-foreground">/v2/</span> prefix instead of changing these.
             </p>

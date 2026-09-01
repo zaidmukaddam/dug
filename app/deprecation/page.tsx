@@ -53,8 +53,8 @@ export default function Deprecation() {
         <p className="max-w-3xl text-sm text-pretty text-muted-foreground">
           Nothing is deprecated today, and the absence of a{" "}
           <span className="text-foreground">Deprecation</span> header is how you can tell.
-          Checking for one on each response is enough; nothing here disappears without it, and
-          you do not need to watch this page to stay ahead of a removal.
+          Checking for one on each response is enough. Nothing here disappears without it, and
+          you don’t need to watch this page to stay ahead of a removal.
         </p>
 
         <Frame title="how you are told">
@@ -63,12 +63,12 @@ export default function Deprecation() {
               rows={[
                 {
                   label: "Deprecation",
-                  value: "an http-date, the day it became deprecated (RFC 9745)",
+                  value: "the day it became deprecated, as an HTTP date (RFC 9745)",
                   accent: true,
                 },
-                { label: "Sunset", value: "an http-date, the day it stops answering (RFC 8594)" },
+                { label: "Sunset", value: "the day it stops answering, as an HTTP date (RFC 8594)" },
                 { label: "Link", value: 'rel="deprecation", pointing at what to read' },
-                { label: "where", value: "on the deprecated route's own responses, not only here" },
+                { label: "where", value: "on the deprecated route’s own responses, not only here" },
               ]}
             />
             <p className="max-w-3xl text-sm text-pretty text-graph-muted">
@@ -90,28 +90,28 @@ export default function Deprecation() {
             />
             <p className="max-w-3xl text-sm text-pretty text-graph-muted">
               A replacement existing before the clock starts is the part that matters. Six months
-              of warning is not much use if there is nothing to migrate to for five of them.
+              of warning isn’t much use if there’s nothing to migrate to for five of them.
             </p>
           </div>
         </Frame>
 
-        <Frame title="what does not count as a breaking change">
+        <Frame title="what doesn’t count as a breaking change">
           <div className="flex flex-col gap-4">
             <p className="max-w-3xl text-sm text-pretty text-graph-muted">
               The paths are unversioned and additive. These happen without notice, so parse
-              defensively and ignore what you do not recognise:
+              defensively and ignore what you don’t recognise:
             </p>
             <FrameRows
               rows={[
                 { label: "new commands", value: "a new route appears, nothing existing moves", accent: true },
                 { label: "new fields", value: "added to the envelope or to a block's props" },
-                { label: "new blocks", value: "a screen grows a component you have not seen" },
+                { label: "new blocks", value: "a screen grows a component you haven’t seen" },
                 { label: "new notes", value: "provenance and limits get more specific" },
               ]}
             />
             <p className="text-xs text-graph-muted">
-              A change that would break an existing caller is not one of these. It ships under a
-              new path prefix, and the old one is deprecated on the timeline above.
+              A change that would break an existing caller isn’t one of these. It ships under a
+              new path prefix, and the old one follows the timeline above.
             </p>
           </div>
         </Frame>
@@ -119,16 +119,16 @@ export default function Deprecation() {
         <Frame title="versions">
           <p className="max-w-3xl text-sm text-pretty text-graph-muted">
             Every response carries <span className="text-foreground">X-API-Version</span>, naming
-            the contract it was produced under. Send the same header to pin it; a version this
-            surface does not serve is refused with{" "}
-            <span className="text-foreground">error.code unsupported_version</span> rather than
-            silently answered by a different one.
+            the contract that produced it. Send the same header to pin it. Ask for a version this
+            surface doesn’t serve and you get{" "}
+            <span className="text-foreground">error.code unsupported_version</span>, not a silent
+            answer from a different one.
           </p>
         </Frame>
 
         <footer className="flex flex-col gap-2 pt-4 pb-2 text-xs text-muted-foreground">
           <p>
-            The rest of the contract — representations, the error model, the quota — is on{" "}
+            The rest of the contract (representations, the error model, the quota) is on{" "}
             <Link href="/developers" className="hover:text-foreground">
               /developers
             </Link>

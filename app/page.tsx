@@ -103,13 +103,13 @@ async function perform(step: Lookup): Promise<Outcome> {
       failure: {
         input: step.label,
         message: error instanceof Error ? error.message : "the request failed",
-        hint: "the answer is not being shown as partial. try again",
+        hint: "the answer isn’t being shown as partial. try again",
       },
     }
   }
 }
 
-const PLACEHOLDER = "try TLS example.com, HELP, or just ask"
+const PLACEHOLDER = "try TLS example.com, HELP, or ask in plain words"
 
 const VERBS = new Set<string>(COMMANDS.map((spec) => spec.name))
 
@@ -582,11 +582,12 @@ function Landing({
           </div>
 
           <p className="max-w-3xl text-xs text-pretty text-graph-muted">
-            One question, several lookups, every screen kept under the question that produced it.
-            Click one, or type <span className="text-foreground">why mail yourdomain.com</span> to
-            point it at your own — which means knowing there is a topic called{" "}
-            <span className="text-foreground">mail</span>. An agent in this page does not pick from
-            this list and you do not have to learn it: say the symptom, and it writes its own
+            One question, three to five lookups, every screen kept under the question that
+            produced it. Click one, or type{" "}
+            <span className="text-foreground">why mail yourdomain.com</span> to point it at your
+            own, which means knowing there’s a topic called{" "}
+            <span className="text-foreground">mail</span>. An agent in this page doesn’t pick from
+            this list, and you don’t have to learn it: say the symptom, and it writes its own
             sequence out of the {COMMANDS.length} commands below.
           </p>
 
@@ -595,15 +596,16 @@ function Landing({
               exposes no connection state — so rather than imply an agent is
               here, say plainly where to get one. */}
           <p className="max-w-3xl text-xs text-pretty text-graph-muted">
-            No agent in this browser? The tools are registered either way and nothing is listening
-            to them. Open this page in <span className="text-foreground">ChatGPT&apos;s browser</span>,{" "}
+            No agent in this browser? The page registers the tools either way, and nothing is
+            listening to them. Open this page in{" "}
+            <span className="text-foreground">ChatGPT’s browser</span>,{" "}
             <span className="text-foreground">Codex</span>, or{" "}
             <span className="text-foreground">Chrome with WebMCP enabled</span> and ask it to
             investigate a domain. Everything here also answers over{" "}
             <Link href="/mcp" className="text-graph-accent hover:underline">
               /mcp
             </Link>{" "}
-            for an agent that is not in a browser at all.
+            for an agent that isn’t in a browser at all.
           </p>
         </div>
       </Frame>
@@ -677,8 +679,8 @@ function Landing({
       <p className="max-w-3xl text-xs leading-relaxed text-pretty text-graph-muted lg:col-span-3">
         A command driven terminal for domain and network diagnostics. Every answer is a live
         query made when you ask for it: nothing is precomputed, nothing is stored between
-        requests, and each answer is labelled with how old it is. The same URLs answer in plain
-        text for a terminal, JSON for a program and markdown for an agent —{" "}
+        requests, and each answer says how old it is. The same URLs answer in plain
+        text for a terminal, JSON for a program and markdown for an agent.{" "}
         <span className="text-foreground">curl dug.sh/tls/github.com</span> needs no key and no
         signup. The grammar, the limits and the error model are written out at{" "}
         <Link href="/developers" className="text-graph-accent hover:underline">

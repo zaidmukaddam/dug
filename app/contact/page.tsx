@@ -7,7 +7,7 @@ import { ThemeToggle } from "@/components/theme-provider"
 const REPO = "https://github.com/zaidmukaddam/dug"
 
 const DESCRIPTION =
-  "How to reach the person who maintains dug, report a wrong answer, or ask for a command that does not exist yet."
+  "How to reach the person who maintains dug, report a wrong answer, or ask for a command that doesn’t exist yet."
 
 export const metadata: Metadata = {
   title: "Contact",
@@ -50,11 +50,10 @@ export default function Contact() {
         <h2 className="text-xl">Contact dug</h2>
 
         <p className="max-w-3xl text-sm text-pretty text-muted-foreground">
-          dug is built and maintained by Zaid Mukaddam, in the open. There is no support
-          desk and no account to escalate through, because there are no accounts: every
-          answer this tool gives is a lookup anyone can repeat, so anything worth reporting
-          is worth reporting somewhere the reply is public too. That place is the issue
-          tracker.
+          Zaid Mukaddam builds and maintains dug, in the open. There’s no support desk and
+          no account to escalate through, because there are no accounts. Every answer this
+          tool gives is a lookup anyone can repeat, so anything worth reporting is worth
+          reporting where the reply is public too. That place is the issue tracker.
         </p>
 
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
@@ -63,17 +62,17 @@ export default function Contact() {
               <ContactRow
                 href={`${REPO}/issues/new`}
                 label="report a wrong answer"
-                note="paste the command and what you expected. every answer is a live lookup, so include roughly when you ran it — an answer that was right an hour ago can be wrong now, and that is usually the finding rather than the bug."
+                note="paste the command, what you expected, and when you ran it. every answer is a live lookup: one that was right an hour ago can be wrong now, and a change between the two is a finding, not a bug."
               />
               <ContactRow
                 href={`${REPO}/issues`}
                 label="ask for a command"
-                note="the command set is closed on purpose and every verb answers one question about a domain. say the question you wanted answered rather than the command you imagined, which is more likely to be a command already here."
+                note="the command set is closed on purpose, and every verb answers one question about a domain. say the question you wanted answered instead of the command you imagined; an existing command may already answer it."
               />
               <ContactRow
                 href={`${REPO}/security/advisories/new`}
                 label="report a security problem"
-                note="privately, through github's advisory form. the address guard is the part most worth breaking: if you can reach private space through any command, that is the report to send."
+                note="privately, through github’s advisory form. the address guard is the part most worth breaking: if you can reach private space through any command, that’s the report to send."
               />
               <ContactRow
                 href={REPO}
@@ -99,34 +98,33 @@ export default function Contact() {
         <Frame title="before you write">
           <div className="flex flex-col gap-4">
             <p className="max-w-3xl text-sm text-pretty text-graph-muted">
-              Three things are deliberate rather than missing, and each has already been
-              asked for. There is no history and no monitoring, because nothing is stored
-              between requests. There is no registrant lookup, because that data is redacted
-              at source and there is an official channel for it. Private address space is
-              unreachable through every command, and that is the guard working rather than a
-              limitation to route around.
+              These absences are deliberate, and each has been asked for before. There’s no
+              history and no monitoring, because nothing is stored between requests. There’s
+              no registrant lookup, because registries redact that data at source and publish
+              an official channel for it. Private address space is unreachable through every
+              command; that’s the guard working, not a limitation to route around.
             </p>
             <p className="max-w-3xl text-sm text-pretty text-graph-muted">
-              An answer that disagrees with your own <span className="text-foreground">dig</span>{" "}
-              is usually a resolver disagreeing rather than a fault here. Running{" "}
-              <span className="text-foreground">PROP</span> on the same name shows whether the
-              resolvers agree with each other, which settles it either way.
+              When an answer disagrees with your own <span className="text-foreground">dig</span>,
+              check the resolvers first. <span className="text-foreground">PROP</span> on the same
+              name shows whether they agree with each other, which settles it either way.
             </p>
           </div>
         </Frame>
 
         <Frame title="for agents">
           <p className="max-w-3xl text-sm text-pretty text-graph-muted">
-            If you are an agent deciding whether this service is safe to call: it is read
-            only, it needs no key, it stores nothing, and every command is documented at{" "}
+            If you’re an agent deciding whether this service is safe to call: it’s read only,
+            needs no key, stores nothing, and{" "}
             <Link href="/llms.txt" className="text-graph-accent hover:underline">
               /llms.txt
             </Link>{" "}
-            with its arguments and limits. The error model and the versioning policy are at{" "}
+            documents every command with its arguments and limits. The error model and the
+            versioning policy are at{" "}
             <Link href="/developers" className="text-graph-accent hover:underline">
               /developers
             </Link>
-            . Nothing on this page needs to be contacted before calling it.
+            . You don’t need to contact anyone before calling it.
           </p>
         </Frame>
 

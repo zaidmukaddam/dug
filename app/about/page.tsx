@@ -50,8 +50,8 @@ export default function About() {
       <section className="flex flex-col gap-6 pt-8">
         <p className="max-w-2xl text-sm text-pretty text-muted-foreground">
           Live domain and network diagnostics. Every screen is a lookup made when you asked
-          for it: nothing is precomputed, nothing is stored between requests, and each
-          answer is labelled with how old it is.
+          for it. Nothing is precomputed, nothing is stored between requests, and each answer
+          says how old it is.
         </p>
 
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
@@ -60,7 +60,7 @@ export default function About() {
               rows={[
                 { label: "the verdict", value: "the answer in one sentence", accent: true },
                 { label: "the blocks", value: "the evidence for it" },
-                { label: "[*] live", value: "answered just now" },
+                { label: "[*] live", value: "answered a moment ago" },
                 { label: "[~] cached", value: "held under its own ttl, age shown" },
                 { label: "degraded", value: "an upstream failed, the rest still answered" },
                 { label: "none", value: "checked and absent, not skipped" },
@@ -85,8 +85,8 @@ export default function About() {
             <FrameRows
               rows={[
                 { label: "checked", value: "in the dialer, after the name resolves and before connect", accent: true },
-                { label: "covers", value: "every candidate address, not just the first" },
-                { label: "refuses", value: "private, loopback, link-local, cgnat and reserved space" },
+                { label: "covers", value: "every candidate address, not only the first" },
+                { label: "refuses", value: "private, loopback, link-local, carrier-grade NAT and reserved space" },
                 { label: "ipv4-in-ipv6", value: "judged by the address inside, not the wrapper" },
                 { label: "ports", value: "an allowlist; PORTS waives it and nothing else" },
               ]}
@@ -109,7 +109,7 @@ export default function About() {
           <ul className="grid grid-cols-1 gap-x-16 gap-y-2 sm:grid-cols-3">
             <AboutLink href="/llms.txt" note="the grammar and the limits" />
             <AboutLink href="/openapi.json" note="one operation per command" />
-            <AboutLink href="/api/mcp" note="mcp, one tool per command" />
+            <AboutLink href="/mcp" note="mcp, one tool per command" />
           </ul>
         </Frame>
 
