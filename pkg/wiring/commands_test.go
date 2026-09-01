@@ -172,16 +172,29 @@ func TestWebMcpTargetsTheCurrentAPI(t *testing.T) {
 		t.Error("webmcp.ts has no AbortController, so the cleanup path removes nothing")
 	}
 
-	// The marker is decided by what getTools reports, never by whether the
-	// signal happens to be aborted. Returning early on `aborted` left the
-	// attribute unset on a page whose whole tool set was registered and
-	// working: the signal fires between React's two mount passes, and an
-	// implementation may keep a registration it was meant to remove.
+	// The marker said nothing on a page carrying its whole tool set, twice over,
+	// and these are the two shapes that caused it.
+	//
+	// One: returning early when the signal is aborted. It fires between React's
+	// two mount passes and on unmount, and neither answers whether an agent can
+	// find the tools.
 	if regexp.MustCompile(`\.aborted\) \{\n\s*return\n`).MatchString(body) {
 		t.Error("webmcp.ts returns early on an aborted signal, which skips the mark on a page whose tools are present")
 	}
-	if !strings.Contains(body, "controller.signal.aborted && !all") {
-		t.Error("webmcp.ts does not check what is actually registered before suppressing the mark")
+
+	// Two: waiting on the registrations. In a production build at least one
+	// registerTool promise never settles, so gating the check on Promise.all
+	// meant it never ran at all. Development hid it — the abort between React's
+	// two passes rejected the pending calls, which is the only reason it ever
+	// completed there.
+	if strings.Contains(body, "Promise.all(") && !strings.Contains(body, "Promise.race(") {
+		t.Error("webmcp.ts waits on Promise.all over registerTool with no bound, and those calls do not always settle")
+	}
+	if !strings.Contains(body, "SETTLE_BUDGET_MS") {
+		t.Error("webmcp.ts has no bounded wait for the tools to come up, so the mark can hang or fire early")
+	}
+	if !strings.Contains(body, "await present(context)") {
+		t.Error("webmcp.ts does not decide the mark from getTools, which is the only thing that answers it")
 	}
 }
 

@@ -81,6 +81,14 @@ function attempt(call: () => unknown): Promise<boolean> {
 // the tools actually are.
 type WebMcpState = "unsupported" | "registered" | "failed"
 
+// How long to keep asking getTools whether the set is up before calling it a
+// failure, and how often. Generous, because the cost of waiting is a marker
+// that appears late and the cost of giving up early is one that is wrong.
+const SETTLE_BUDGET_MS = 5000
+const SETTLE_STEP_MS = 100
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
 // The names currently registered, or null where the implementation offers no
 // way to ask.
 async function present(context: ModelContext): Promise<Set<string> | null> {
@@ -242,43 +250,64 @@ export function useWebMcp(run: (text: string) => Promise<Payload | null>) {
     // name by name and racing.
     const controller = new AbortController()
 
+    const registrations = tools.map((tool) =>
+      attempt(() => context.registerTool(tool, { signal: controller.signal }))
+    )
+
     // The mark is taken from what is registered afterwards, not from whether
-    // each call resolved.
+    // each call resolved, and it must not wait on those calls to find out.
     //
-    // Those are different answers. React mounts an effect twice in development,
-    // and abort races the registrations already in flight, so the second pass
-    // gets "Tool already registered" for tools that are present and working.
-    // Judging by the individual calls reported failure on a page whose tool set
-    // was completely intact, which is the opposite of what this attribute is
-    // for. What matters is whether an agent can find the tools.
-    void Promise.all(
-      tools.map((tool) => attempt(() => context.registerTool(tool, { signal: controller.signal })))
-    ).then(async (results) => {
-      const registered = await present(context)
+    // Two separate things went wrong here, and both produced the same symptom —
+    // a page carrying its whole tool set and no marker to say so:
+    //
+    //   - Judging by the individual calls. React mounts an effect twice in
+    //     development and abort races the registrations already in flight, so
+    //     the second pass reports "Tool already registered" for tools that are
+    //     present and working.
+    //   - Waiting on all of them. In a production build at least one
+    //     registerTool promise never settles, so Promise.all never resolved and
+    //     the check simply never ran. Development did not show it: the abort
+    //     between React's two passes rejected the pending calls, which is the
+    //     only reason it ever completed there.
+    //
+    // So this polls getTools instead. It is the only thing that answers the
+    // question an agent is actually asking, it answers as soon as the tools are
+    // up rather than when the last promise decides to settle, and it cannot
+    // hang.
+    void (async () => {
+      const deadline = Date.now() + SETTLE_BUDGET_MS
 
-      if (registered === null) {
-        // No getTools to check against, so the calls are all there is to go on,
-        // and after an abort they say nothing about what a visitor would find.
-        if (!controller.signal.aborted) {
-          mark(results.every(Boolean) ? "registered" : "failed")
+      for (;;) {
+        const registered = await present(context)
+
+        // No getTools to check against. The calls are the only evidence left,
+        // and since they may never settle they get the same budget and no more.
+        if (registered === null) {
+          const results = await Promise.race([
+            Promise.all(registrations),
+            wait(Math.max(0, deadline - Date.now())).then(() => null),
+          ])
+          if (!controller.signal.aborted && results !== null) {
+            mark(results.every(Boolean) ? "registered" : "failed")
+          }
+          return
         }
-        return
-      }
 
-      // Returning early on `aborted` was the bug that left this attribute unset
-      // on a page whose 25 tools were all present and working: the signal fires
-      // between React's two mount passes, and it fires on unmount, but neither
-      // is the question. Whether an agent can find the tools is, and getTools
-      // is the only thing that answers it — an implementation may well keep a
-      // registration the signal was meant to remove.
-      const all = tools.every((tool) => registered.has(tool.name))
-      if (controller.signal.aborted && !all) {
-        // Unmounted and genuinely gone. Leave the attribute alone rather than
-        // report a failure that did not happen.
-        return
+        if (tools.every((tool) => registered.has(tool.name))) {
+          mark("registered")
+          return
+        }
+        if (Date.now() >= deadline) {
+          // Aborted means unmounted, and the tools going away with it is not a
+          // failure. Say nothing rather than report one that did not happen.
+          if (!controller.signal.aborted) {
+            mark("failed")
+          }
+          return
+        }
+        await wait(SETTLE_STEP_MS)
       }
-      mark(all ? "registered" : "failed")
-    })
+    })()
 
     return () => controller.abort()
   })
