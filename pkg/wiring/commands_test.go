@@ -171,6 +171,28 @@ func TestWebMcpTargetsTheCurrentAPI(t *testing.T) {
 	if !strings.Contains(body, "new AbortController()") {
 		t.Error("webmcp.ts has no AbortController, so the cleanup path removes nothing")
 	}
+
+	// The marker is decided by what getTools reports, never by whether the
+	// signal happens to be aborted. Returning early on `aborted` left the
+	// attribute unset on a page whose whole tool set was registered and
+	// working: the signal fires between React's two mount passes, and an
+	// implementation may keep a registration it was meant to remove.
+	if regexp.MustCompile(`\.aborted\) \{\n\s*return\n`).MatchString(body) {
+		t.Error("webmcp.ts returns early on an aborted signal, which skips the mark on a page whose tools are present")
+	}
+	if !strings.Contains(body, "controller.signal.aborted && !all") {
+		t.Error("webmcp.ts does not check what is actually registered before suppressing the mark")
+	}
+}
+
+// llms.txt tells an agent to read data-webmcp-server before concluding a page
+// has no tools, so the value has to be a path that answers.
+func TestWebMcpServerAttributePointsAtTheAdvertisedPath(t *testing.T) {
+	body := read(t, repoRoot(t), "lib", "webmcp.ts")
+
+	if !strings.Contains(body, `dataset.webmcpServer = "/mcp"`) {
+		t.Error("webmcp.ts does not point data-webmcp-server at /mcp, the path llms.txt and server.json name")
+	}
 }
 
 // Native WebMCP is refused outright in a document that is not origin-isolated,

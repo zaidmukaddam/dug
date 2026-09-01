@@ -228,7 +228,7 @@ WebMCP a polyfill installs it, so the tools are there either way.
 
 document.modelContext is canonical; navigator.modelContext is a deprecated alias
 and may be absent. The root element carries data-webmcp, which is "registered"
-once the tools are up, and data-webmcp-server pointing at /api/mcp. Read that
+once the tools are up, and data-webmcp-server pointing at /mcp. Read that
 attribute before concluding a page has no tools.
 
 ## Limits

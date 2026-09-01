@@ -107,7 +107,9 @@ function mark(state: WebMcpState) {
     return
   }
   document.documentElement.dataset.webmcp = state
-  document.documentElement.dataset.webmcpServer = "/api/mcp"
+  // The short path, which is what llms.txt, the catalog and server.json all
+  // name. /api/mcp is the same endpoint and still answers.
+  document.documentElement.dataset.webmcpServer = "/mcp"
 }
 
 // document.modelContext is canonical. navigator.modelContext is the deprecated
@@ -252,16 +254,30 @@ export function useWebMcp(run: (text: string) => Promise<Payload | null>) {
     void Promise.all(
       tools.map((tool) => attempt(() => context.registerTool(tool, { signal: controller.signal })))
     ).then(async (results) => {
-      if (controller.signal.aborted) {
-        return
-      }
       const registered = await present(context)
+
       if (registered === null) {
-        // No getTools to check against, so fall back to the calls.
-        mark(results.every(Boolean) ? "registered" : "failed")
+        // No getTools to check against, so the calls are all there is to go on,
+        // and after an abort they say nothing about what a visitor would find.
+        if (!controller.signal.aborted) {
+          mark(results.every(Boolean) ? "registered" : "failed")
+        }
         return
       }
-      mark(tools.every((tool) => registered.has(tool.name)) ? "registered" : "failed")
+
+      // Returning early on `aborted` was the bug that left this attribute unset
+      // on a page whose 25 tools were all present and working: the signal fires
+      // between React's two mount passes, and it fires on unmount, but neither
+      // is the question. Whether an agent can find the tools is, and getTools
+      // is the only thing that answers it — an implementation may well keep a
+      // registration the signal was meant to remove.
+      const all = tools.every((tool) => registered.has(tool.name))
+      if (controller.signal.aborted && !all) {
+        // Unmounted and genuinely gone. Leave the attribute alone rather than
+        // report a failure that did not happen.
+        return
+      }
+      mark(all ? "registered" : "failed")
     })
 
     return () => controller.abort()

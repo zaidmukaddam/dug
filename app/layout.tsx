@@ -150,13 +150,17 @@ export default function RootLayout({
       suppressHydrationWarning
       className={cn("antialiased", fontMono.variable)}
     >
-      <head>
+      <body>
         {/* The same relations next.config.ts sets as Link headers, in the
             markup as well. A crawler that keeps the body and drops the response
             headers — which is most of them — otherwise has no path from a page
-            to the api that page is a client of. React hoists these into head
-            wherever they are rendered; they are written here to sit next to the
-            metadata they belong with. */}
+            to the api that page is a client of.
+
+            Rendered here rather than inside an explicit <head>, which React
+            hoists them out of anyway. Writing the <head> tag by hand changed
+            what hydration reconciles on <html> and silently wiped the
+            data-webmcp attribute lib/webmcp.ts sets on mount — tools stayed
+            registered, but the marker that tells an agent so was gone. */}
         <link rel="service-desc" href="/openapi.json" type="application/vnd.oai.openapi+json" />
         <link rel="service-doc" href="/developers" type="text/html" />
         <link rel="describedby" href="/llms.txt" type="text/plain" />
@@ -165,8 +169,7 @@ export default function RootLayout({
           href="/.well-known/ai-catalog.json"
           type="application/ai-catalog+json"
         />
-      </head>
-      <body>
+
         {/* In the server html rather than injected, so a client that never runs
             javascript still reads it. */}
         <script
