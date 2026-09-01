@@ -160,3 +160,8 @@ addresses carrying an embedded IPv4 (NAT64, 6to4) are judged by that inner
 address.
 
 Only `PORTS` waives the port allowlist, and it waives nothing else.
+
+## License
+
+MIT. See [LICENSE](LICENSE). The OpenAPI document at `/openapi.json` declares the
+same, so the served description and the repository agree.

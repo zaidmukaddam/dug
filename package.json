@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "type": "module",
   "private": true,
+  "license": "MIT",
   "scripts": {
     "dev": "DEV_API_ORIGIN=http://127.0.0.1:8787 concurrently -k -n api,web -c magenta,cyan \"pnpm dev:api\" \"next dev\"",
     "dev:api": "go run ./cmd/devapi",
