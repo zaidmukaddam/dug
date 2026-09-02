@@ -241,7 +241,9 @@ dug_investigate. It takes a question, a target and a list of commands, runs them
 in order, and leaves every screen on the page under the question that produced
 them. The plan isn’t a preset and there’s no menu of investigations: the
 calling model writes the sequence out of the same grammar every other tool uses,
-which is the part a model is good at and a lookup table isn’t.
+which is the part a model is good at and a lookup table isn’t. For several
+domains pass targets and write each step with {target} where the name goes; it
+runs once per target, in order.
 
 Reach for it when someone has described a symptom, not named a lookup: mail
 going to spam, a dns change that hasn’t taken effect, a host that’s slow. The

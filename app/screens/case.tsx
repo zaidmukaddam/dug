@@ -15,13 +15,13 @@ export type CaseStep =
 
 export function CaseFile({
   question,
-  target,
+  targets,
   steps,
   planned,
   plannedBy,
 }: {
   question: string
-  target: string
+  targets: string[]
   steps: (CaseStep | undefined)[]
   planned: string[]
   // Who chose the steps. null is a person clicking a landing question or
@@ -32,10 +32,10 @@ export function CaseFile({
   const pending = planned.findIndex((_, index) => !steps[index])
 
   return (
-    <section className="flex flex-col gap-12" aria-label={`${question}: ${target}`}>
+    <section className="flex flex-col gap-12" aria-label={`${question}: ${targets.join(", ")}`}>
       <header className="flex flex-col gap-4">
         <p className="text-xs tracking-wide text-graph-muted uppercase">
-          investigating · <span className="text-foreground">{target}</span>
+          investigating · <span className="text-foreground">{targets.join(", ")}</span>
           {plannedBy ? (
             <>
               {" · "}
