@@ -1,6 +1,7 @@
 package icmpx
 
 import (
+	"context"
 	"net"
 	"testing"
 	"time"
@@ -17,7 +18,7 @@ func TestPingAndTraceroute(t *testing.T) {
 	}
 
 	target := net.ParseIP("1.1.1.1")
-	replies := Ping(target, 4, 2*time.Second)
+	replies := Ping(context.Background(), target, 4, 2*time.Second)
 	answered := 0
 	for _, r := range replies {
 		if r.Kind == "echo" {
@@ -29,7 +30,7 @@ func TestPingAndTraceroute(t *testing.T) {
 		t.Error("no echo replies from 1.1.1.1")
 	}
 
-	hops := Traceroute(target, 12, time.Second, 2)
+	hops := Traceroute(context.Background(), target, 12, time.Second, 2)
 	reached := false
 	for _, h := range hops {
 		t.Logf("  ttl %2d %-18s %-14s %v", h.TTL, orStar(h.Source), h.Kind, h.RTT.Truncate(time.Millisecond))

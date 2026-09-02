@@ -30,6 +30,9 @@ const (
 	maxHops     = 20
 	maxPings    = 10
 	portTimeout = 1500 * time.Millisecond
+	// The worst case, 20 silent hops at two probes each, would otherwise be 40s
+	// of function time; past this the hops gathered so far are the answer.
+	routeBudget = 25 * time.Second
 )
 
 // The services worth asking about by default. Named, because a bare port
@@ -104,7 +107,7 @@ func runPing(r *http.Request, result *screen.Result, host string, count int) {
 		return
 	}
 
-	replies := icmpx.Ping(net.IP(addr.AsSlice()), count, 2*time.Second)
+	replies := icmpx.Ping(r.Context(), net.IP(addr.AsSlice()), count, 2*time.Second)
 	result.Spend(count)
 	result.HoldTTL(60, "dns")
 
@@ -208,7 +211,13 @@ func runRoute(r *http.Request, result *screen.Result, host string) {
 		return
 	}
 
-	hops := icmpx.Traceroute(net.IP(addr.AsSlice()), maxHops, time.Second, 2)
+	ctx, cancel := context.WithTimeout(r.Context(), routeBudget)
+	defer cancel()
+
+	hops := icmpx.Traceroute(ctx, net.IP(addr.AsSlice()), maxHops, time.Second, 2)
+	if ctx.Err() != nil {
+		result.Note("the route was cut at " + routeBudget.String() + "; hops after that were not probed")
+	}
 	result.Spend(len(hops) * 2)
 	result.HoldTTL(300, "dns")
 

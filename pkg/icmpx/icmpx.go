@@ -7,6 +7,7 @@
 package icmpx
 
 import (
+	"context"
 	"errors"
 	"net"
 	"os"
@@ -53,7 +54,11 @@ func Available(v6 bool) (bool, string) {
 // Probe sends one echo request and waits for the first message about it. A low
 // ttl is what makes traceroute work: the probe expires in transit and the
 // router that dropped it announces itself with a time exceeded.
-func Probe(target net.IP, sequence, ttl int, timeout time.Duration) Reply {
+func Probe(ctx context.Context, target net.IP, sequence, ttl int, timeout time.Duration) Reply {
+	if err := ctx.Err(); err != nil {
+		return Reply{Kind: "error", Detail: err.Error()}
+	}
+
 	v6 := target.To4() == nil
 	proto, protoNum := network(v6)
 	listen := "0.0.0.0"
@@ -94,6 +99,9 @@ func Probe(target net.IP, sequence, ttl int, timeout time.Duration) Reply {
 	}
 
 	deadline := time.Now().Add(timeout)
+	if ctxDeadline, ok := ctx.Deadline(); ok && ctxDeadline.Before(deadline) {
+		deadline = ctxDeadline
+	}
 	_ = conn.SetDeadline(deadline)
 
 	started := time.Now()
@@ -143,10 +151,13 @@ func Probe(target net.IP, sequence, ttl int, timeout time.Duration) Reply {
 
 // Ping sends sequential echo requests, so the round trip times are independent
 // samples rather than a burst competing with itself.
-func Ping(target net.IP, count int, timeout time.Duration) []Reply {
+func Ping(ctx context.Context, target net.IP, count int, timeout time.Duration) []Reply {
 	replies := make([]Reply, 0, count)
 	for i := 0; i < count; i++ {
-		replies = append(replies, Probe(target, (os.Getpid()+i)&0xffff, 0, timeout))
+		if ctx.Err() != nil {
+			return replies
+		}
+		replies = append(replies, Probe(ctx, target, (os.Getpid()+i)&0xffff, 0, timeout))
 		if i+1 < count {
 			time.Sleep(120 * time.Millisecond)
 		}
@@ -164,14 +175,17 @@ type Hop struct {
 // Traceroute walks the TTL up until the destination answers or the ceiling is
 // hit. Each hop keeps its fastest answering probe, because a single lost packet
 // is normal and should not render the hop unreachable.
-func Traceroute(target net.IP, maxHops int, timeout time.Duration, probesPerHop int) []Hop {
+func Traceroute(ctx context.Context, target net.IP, maxHops int, timeout time.Duration, probesPerHop int) []Hop {
 	hops := make([]Hop, 0, maxHops)
 
 	for ttl := 1; ttl <= maxHops; ttl++ {
+		if ctx.Err() != nil {
+			return hops
+		}
 		best := Hop{TTL: ttl, Kind: "timeout"}
 
 		for attempt := 0; attempt < probesPerHop; attempt++ {
-			reply := Probe(target, (os.Getpid()+ttl*16+attempt)&0xffff, ttl, timeout)
+			reply := Probe(ctx, target, (os.Getpid()+ttl*16+attempt)&0xffff, ttl, timeout)
 			if reply.Answered() && (best.Source == "" || reply.RTT < best.RTT) {
 				best = Hop{TTL: ttl, Source: reply.Source, RTT: reply.RTT, Kind: reply.Kind}
 			}
