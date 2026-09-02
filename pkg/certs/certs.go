@@ -13,6 +13,7 @@ import (
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"net"
 	"sort"
@@ -140,41 +141,76 @@ func keyDescription(cert *x509.Certificate) string {
 	return "unknown"
 }
 
+// Test seams. The guard refuses loopback by design, and the only way to
+// exercise a certificate failure offline is a self-signed server on it.
+var (
+	resolve   = guard.Resolve
+	netDialer = guard.Dialer
+)
+
 // Connect handshakes and describes what came back. A verification failure is a
 // finding, so the handshake is not abandoned when it happens.
 func Connect(ctx context.Context, host string, port int, timeout time.Duration) Handshake {
 	out := Handshake{Host: host, Port: port, Protocols: map[string]*bool{}}
 	started := time.Now()
 
-	addrs, err := guard.Resolve(ctx, host)
+	addrs, err := resolve(ctx, host)
 	if err != nil {
 		out.Err = err.Error()
 		return out
 	}
 	out.IP = addrs[0].String()
 
-	dialer := &tls.Dialer{
-		NetDialer: guard.Dialer(timeout),
-		Config:    tlsConfig(host, true),
+	address := net.JoinHostPort(host, itoa(port))
+
+	// dial makes one guarded TCP connection and handshakes over it. out.IP is
+	// updated to the peer actually reached, which on a dual-stack host can
+	// differ from the first address Resolve returned.
+	dial := func(verify bool) (*tls.Conn, error) {
+		conn, err := netDialer(timeout).DialContext(ctx, "tcp", address)
+		if err != nil {
+			return nil, err
+		}
+		if peer, _, splitErr := net.SplitHostPort(conn.RemoteAddr().String()); splitErr == nil {
+			out.IP = peer
+		}
+		conn.SetDeadline(time.Now().Add(timeout))
+		tlsConn := tls.Client(conn, tlsConfig(host, verify))
+		if err := tlsConn.HandshakeContext(ctx); err != nil {
+			conn.Close()
+			return nil, err
+		}
+		return tlsConn, nil
 	}
 
-	conn, err := dialer.DialContext(ctx, "tcp", net.JoinHostPort(host, itoa(port)))
+	tlsConn, err := dial(true)
 	if err != nil {
-		// Retry without verification so a broken certificate is still
-		// described rather than merely refused.
-		out.VerifyError = cleanTLSError(err)
-		dialer.Config = tlsConfig(host, false)
-		conn, err = dialer.DialContext(ctx, "tcp", net.JoinHostPort(host, itoa(port)))
-		if err != nil {
-			out.Err = cleanTLSError(err)
-			return out
+		var verification *tls.CertificateVerificationError
+		if !errors.As(err, &verification) {
+			// A transport failure (timeout, reset) says nothing about the
+			// certificate, so it is not a verification finding. One retry,
+			// still verifying, since the failure may just be flaky.
+			tlsConn, err = dial(true)
+			if err != nil {
+				out.Err = cleanTLSError(err)
+				return out
+			}
+			out.Verified = true
+		} else {
+			// Retry without verification so a broken certificate is still
+			// described rather than merely refused.
+			out.VerifyError = cleanTLSError(err)
+			tlsConn, err = dial(false)
+			if err != nil {
+				out.Err = cleanTLSError(err)
+				return out
+			}
+			out.Verified = false
 		}
-		out.Verified = false
 	} else {
 		out.Verified = true
 	}
 
-	tlsConn := conn.(*tls.Conn)
 	state := tlsConn.ConnectionState()
 	out.Version = versionName(state.Version)
 	out.Cipher = tls.CipherSuiteName(state.CipherSuite)
@@ -200,7 +236,7 @@ func Connect(ctx context.Context, host string, port int, timeout time.Duration) 
 		}
 		out.Chain = append(out.Chain, describe(cert, role))
 	}
-	conn.Close()
+	tlsConn.Close()
 
 	// An unverified handshake has no built path, so fall back to resolving the
 	// issuer of the topmost served certificate against the system pool.
