@@ -19,6 +19,8 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/zaidmukaddam/dug/pkg/guard"
 )
 
@@ -265,22 +267,33 @@ func findRoot(top *x509.Certificate) *x509.Certificate {
 // could not offer that version at all, which is a different statement from the
 // server refusing it.
 func probeProtocols(ctx context.Context, host string, port int, timeout time.Duration) map[string]*bool {
-	results := map[string]*bool{}
-	for _, entry := range Protocols {
-		config := tlsConfig(host, false)
-		config.MinVersion = entry.Version
-		config.MaxVersion = entry.Version
+	// Four independent handshakes, one per protocol version, run at once: a
+	// host that silently drops TLS 1.0/1.1 otherwise costs the full timeout
+	// per version, one after another.
+	offered := make([]bool, len(Protocols))
+	var group errgroup.Group
+	for i, entry := range Protocols {
+		group.Go(func() error {
+			config := tlsConfig(host, false)
+			config.MinVersion = entry.Version
+			config.MaxVersion = entry.Version
 
-		dialer := &tls.Dialer{NetDialer: guard.Dialer(timeout), Config: config}
-		conn, err := dialer.DialContext(ctx, "tcp", net.JoinHostPort(host, itoa(port)))
-		offered := false
-		if err == nil {
-			// A server that quietly negotiates up would otherwise be reported
-			// as supporting the floor it was offered.
-			offered = conn.(*tls.Conn).ConnectionState().Version == entry.Version
-			conn.Close()
-		}
-		value := offered
+			dialer := &tls.Dialer{NetDialer: guard.Dialer(timeout), Config: config}
+			conn, err := dialer.DialContext(ctx, "tcp", net.JoinHostPort(host, itoa(port)))
+			if err == nil {
+				// A server that quietly negotiates up would otherwise be
+				// reported as supporting the floor it was offered.
+				offered[i] = conn.(*tls.Conn).ConnectionState().Version == entry.Version
+				conn.Close()
+			}
+			return nil
+		})
+	}
+	_ = group.Wait()
+
+	results := map[string]*bool{}
+	for i, entry := range Protocols {
+		value := offered[i]
 		results[entry.Label] = &value
 	}
 	return results

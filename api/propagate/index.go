@@ -46,7 +46,8 @@ func run(r *http.Request, result *screen.Result, name string) {
 			jobs = append(jobs, dnsx.Job{Name: name, Type: rtype, Resolver: resolver.IP})
 		}
 	}
-	answers := dnsx.QueryMany(ctx, jobs, 18)
+	// One wave: six resolvers are six upstreams, and 36 in-flight UDP queries is nothing.
+	answers := dnsx.QueryMany(ctx, jobs, len(jobs))
 	result.Spend(len(answers))
 	result.HoldTTL(dnsx.MinTTL(answers), "dns")
 

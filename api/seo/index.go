@@ -15,6 +15,8 @@ import (
 	"strconv"
 	"strings"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/zaidmukaddam/dug/pkg/dnsx"
 	"github.com/zaidmukaddam/dug/pkg/pagex"
 	"github.com/zaidmukaddam/dug/pkg/screen"
@@ -57,8 +59,12 @@ func run(r *http.Request, result *screen.Result, name string) {
 		return
 	}
 
-	robots := pagex.Check(ctx, origin, "/robots.txt")
-	sitemap := pagex.Check(ctx, origin, "/sitemap.xml")
+	var robots, sitemap pagex.Probe
+	// Two independent reads of one origin, waited on once instead of in turn.
+	probes, probeCtx := errgroup.WithContext(ctx)
+	probes.Go(func() error { robots = pagex.Check(probeCtx, origin, "/robots.txt"); return nil })
+	probes.Go(func() error { sitemap = pagex.Check(probeCtx, origin, "/sitemap.xml"); return nil })
+	_ = probes.Wait()
 	result.Spend(2)
 
 	// The named set. Listed here so the count in the verdict can be checked

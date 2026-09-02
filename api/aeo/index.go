@@ -17,6 +17,8 @@ import (
 	"strconv"
 	"strings"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/zaidmukaddam/dug/pkg/dnsx"
 	"github.com/zaidmukaddam/dug/pkg/pagex"
 	"github.com/zaidmukaddam/dug/pkg/screen"
@@ -64,11 +66,24 @@ func run(r *http.Request, result *screen.Result, name string) {
 		return
 	}
 
-	llms := pagex.Check(ctx, origin, "/llms.txt")
-	openapi := pagex.Check(ctx, origin, "/openapi.json")
-	catalog := pagex.Check(ctx, origin, "/.well-known/api-catalog")
-	sitemap := pagex.Check(ctx, origin, "/sitemap.xml")
-	markdownType, markdownVary, markdownOK := pagex.Markdown(ctx, origin+"/")
+	var (
+		llms, openapi, catalog, sitemap pagex.Probe
+		markdownType, markdownVary      string
+		markdownOK                      bool
+	)
+	// Five independent reads of one origin, waited on once. In turn they cost
+	// the sum of five timeouts against a slow host; together they cost the
+	// slowest.
+	probes, probeCtx := errgroup.WithContext(ctx)
+	probes.Go(func() error { llms = pagex.Check(probeCtx, origin, "/llms.txt"); return nil })
+	probes.Go(func() error { openapi = pagex.Check(probeCtx, origin, "/openapi.json"); return nil })
+	probes.Go(func() error { catalog = pagex.Check(probeCtx, origin, "/.well-known/api-catalog"); return nil })
+	probes.Go(func() error { sitemap = pagex.Check(probeCtx, origin, "/sitemap.xml"); return nil })
+	probes.Go(func() error {
+		markdownType, markdownVary, markdownOK = pagex.Markdown(probeCtx, origin+"/")
+		return nil
+	})
+	_ = probes.Wait()
 	result.Spend(5)
 
 	signals := map[string]bool{
