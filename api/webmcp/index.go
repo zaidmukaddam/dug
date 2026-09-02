@@ -16,6 +16,8 @@ import (
 	"strings"
 	"sync"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/zaidmukaddam/dug/pkg/dnsx"
 	"github.com/zaidmukaddam/dug/pkg/httpx"
 	"github.com/zaidmukaddam/dug/pkg/pagex"
@@ -115,13 +117,19 @@ func run(r *http.Request, result *screen.Result, name string) {
 
 	// The other half: an agent that is not in the page. These are files, so
 	// unlike everything above they are simply true or false.
-	card := pagex.Check(ctx, origin, "/.well-known/mcp/server-card.json")
-	manifest := pagex.Check(ctx, origin, "/server.json")
-	llms := pagex.Check(ctx, origin, "/llms.txt")
-	result.Spend(3)
-
-	remote := probeMCP(ctx, origin)
-	result.Spend(1)
+	var (
+		card, manifest, llms pagex.Probe
+		remote               mcpProbe
+	)
+	// Four independent reads of one origin, waited on once rather than in
+	// turn: a firewalled origin costs one timeout instead of four.
+	probes, probeCtx := errgroup.WithContext(ctx)
+	probes.Go(func() error { card = pagex.Check(probeCtx, origin, "/.well-known/mcp/server-card.json"); return nil })
+	probes.Go(func() error { manifest = pagex.Check(probeCtx, origin, "/server.json"); return nil })
+	probes.Go(func() error { llms = pagex.Check(probeCtx, origin, "/llms.txt"); return nil })
+	probes.Go(func() error { remote = probeMCP(probeCtx, origin); return nil })
+	_ = probes.Wait()
+	result.Spend(4)
 
 	signals := map[string]bool{
 		"origin-agent-cluster": isolation != "",

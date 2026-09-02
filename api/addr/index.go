@@ -18,6 +18,8 @@ import (
 	"strconv"
 	"strings"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/zaidmukaddam/dug/pkg/dnsx"
 	"github.com/zaidmukaddam/dug/pkg/guard"
 	"github.com/zaidmukaddam/dug/pkg/resolvers"
@@ -142,9 +144,18 @@ func runIP(r *http.Request, result *screen.Result, target string) {
 	result.Target = ip
 
 	reverse, _ := dnsx.ReverseName(ip)
-	ptr := dnsx.Query(ctx, reverse, "PTR", resolvers.Default.IP)
-	origin := cymruOrigin(ctx, ip)
-	peers := cymruPeers(ctx, ip)
+	var (
+		ptr    dnsx.Answer
+		origin cymru
+		peers  []string
+	)
+	// Three independent lookups against different resolvers, waited on once
+	// instead of in turn.
+	lookups, lookupCtx := errgroup.WithContext(ctx)
+	lookups.Go(func() error { ptr = dnsx.Query(lookupCtx, reverse, "PTR", resolvers.Default.IP); return nil })
+	lookups.Go(func() error { origin = cymruOrigin(lookupCtx, ip); return nil })
+	lookups.Go(func() error { peers = cymruPeers(lookupCtx, ip); return nil })
+	_ = lookups.Wait()
 	result.Spend(3)
 	result.HoldTTL(0, "asn")
 
@@ -209,14 +220,24 @@ func runIP(r *http.Request, result *screen.Result, target string) {
 		{Value: peerCount, Label: "bgp neighbours"},
 	}}, 2)
 
-	peerRows := make([][]string, 0, 12)
-	for i, peer := range peers {
-		if i >= 12 {
-			break
-		}
-		info := cymruASName(ctx, peer)
-		result.Spend(1)
-		peerRows = append(peerRows, []string{"AS" + peer, orNotPublished(info.Name)})
+	limit := len(peers)
+	if limit > 12 {
+		limit = 12
+	}
+	// One DNS TXT query per peer, bounded and run at once instead of one at a
+	// time: twelve peers in turn is twelve timeouts against a slow resolver.
+	infos := make([]cymru, limit)
+	var names errgroup.Group
+	names.SetLimit(12)
+	for i := range limit {
+		names.Go(func() error { infos[i] = cymruASName(ctx, peers[i]); return nil })
+	}
+	_ = names.Wait()
+	result.Spend(limit)
+
+	peerRows := make([][]string, 0, limit)
+	for i := range limit {
+		peerRows = append(peerRows, []string{"AS" + peers[i], orNotPublished(infos[i].Name)})
 	}
 	if len(peerRows) == 0 {
 		peerRows = [][]string{{"-", "no peer data published for this prefix"}}
