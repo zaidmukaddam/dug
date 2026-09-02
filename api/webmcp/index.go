@@ -177,7 +177,7 @@ func run(r *http.Request, result *screen.Result, name string) {
 	result.Add("GraphCheck", screen.CheckProps{
 		Title: "webmcp signals",
 		Items: screen.Checks(webmcpSignals, signals, map[string]string{
-			"origin-agent-cluster": orNone(isolation) + ", required by native webmcp",
+			"origin-agent-cluster": orNotSent(isolation) + ", required by native webmcp",
 			"api in the page":      whereFound(inHTML, inScripts),
 			"remote mcp endpoint":  remote.note,
 			"server card":          probeRow(card),
@@ -378,7 +378,7 @@ func yesNo(ok bool) string {
 	return "no"
 }
 
-func orNone(value string) string {
+func orNotSent(value string) string {
 	if value == "" {
 		return "not sent"
 	}

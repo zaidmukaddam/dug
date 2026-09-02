@@ -429,3 +429,11 @@ func width(s string) int { return utf8.RuneCountInString(s) }
 func Clean(s string) string {
 	return strings.Join(strings.Fields(s), " ")
 }
+
+// OrNone renders absence the way every screen does: checked, and not there.
+func OrNone(value string) string {
+	if value == "" {
+		return "none"
+	}
+	return value
+}

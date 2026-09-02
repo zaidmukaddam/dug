@@ -48,14 +48,7 @@ func run(r *http.Request, result *screen.Result, name string) {
 	result.Spend(4)
 	result.HoldTTL(0, "http")
 
-	if page.Err != "" {
-		result.Degrade("http", page.Err)
-		result.SetVerdict("warn", name+" did not serve a page to read", page.Err)
-		result.Add("GraphSpec", screen.SpecProps{Title: "request", Rows: []screen.SpecRow{
-			{Label: "url", Value: origin + "/", Accent: true},
-			{Label: "result", Value: "no page"},
-			{Label: "reason", Value: page.Err},
-		}}, 3)
+	if pagex.NoPage(result, name, origin, page) {
 		return
 	}
 
@@ -112,10 +105,10 @@ func run(r *http.Request, result *screen.Result, name string) {
 		{Label: "redirects", Value: itoa(page.Redirects)},
 		{Label: "title", Value: measured(page.Title)},
 		{Label: "description", Value: measured(page.Description)},
-		{Label: "canonical", Value: orNone(page.Canonical)},
-		{Label: "meta robots", Value: orNone(page.MetaRobots)},
-		{Label: "lang", Value: orNone(page.Lang)},
-		{Label: "viewport", Value: orNone(page.Viewport)},
+		{Label: "canonical", Value: screen.OrNone(page.Canonical)},
+		{Label: "meta robots", Value: screen.OrNone(page.MetaRobots)},
+		{Label: "lang", Value: screen.OrNone(page.Lang)},
+		{Label: "viewport", Value: screen.OrNone(page.Viewport)},
 	}}, 2)
 
 	result.Add("GraphSpec", screen.SpecProps{Title: "structure", Rows: []screen.SpecRow{
@@ -194,13 +187,6 @@ func trim(value string, limit int) string {
 		return value
 	}
 	return string(runes[:limit]) + "…"
-}
-
-func orNone(value string) string {
-	if value == "" {
-		return "none"
-	}
-	return value
 }
 
 func itoa(n int) string { return strconv.Itoa(n) }
