@@ -28,17 +28,21 @@ import { INVESTIGATIONS } from "@/lib/investigations"
 const MODEL = process.env.PLANNER_MODEL?.trim() || "gpt-5.6-luna"
 
 export type PlanOutcome =
-  | { ok: true; question: string; target: string; steps: string[] }
+  | { ok: true; question: string; targets: string[]; steps: string[] }
   | { ok: false; failure: ParseFailure }
 
 const Plan = z.object({
   question: z.string().min(1).max(200).describe("the question, in the words the person used"),
-  target: z.string().min(1).max(253).describe("the bare domain or host, no scheme, no path"),
+  targets: z.array(z.string().min(1).max(253)).min(1).max(8).describe(
+    "every bare domain or host the question names, no scheme, no path; one entry when it names one"
+  ),
   steps: z
     .array(z.string().min(1).max(80))
     .min(1)
     .max(6)
-    .describe("full command lines to run in order, three to five is usually right"),
+    .describe(
+      "command lines to run in order, each written with {target} where the domain goes; three to five is usually right"
+    ),
 })
 
 const RUNNABLE = COMMANDS.filter((spec) => spec.endpoint)
@@ -56,7 +60,7 @@ function system(): string {
   ).join("\n")
 
   const examples = INVESTIGATIONS.map(
-    (entry) => `"${entry.question}" -> ${JSON.stringify(entry.steps("example.com"))}`
+    (entry) => `"${entry.question}" -> ${JSON.stringify(entry.steps("{target}"))}`
   ).join("\n")
 
   return [
@@ -67,11 +71,11 @@ function system(): string {
     commands,
     "",
     "Rules:",
-    "- target is a bare hostname such as example.com. Never a scheme, never a path, never a port.",
-    "- every step is one full command line: the command name, then the target, then any second argument the command takes.",
+    "- targets are bare hostnames such as example.com, one per domain the text names. Never a scheme, never a path, never a port.",
+    "- every step is one full command line with {target} in place of the domain: the command name, then {target}, then any second argument the command takes. The same steps run once per target.",
     "- three to five steps. Do not pad. Do not repeat a command against the same target.",
     "- question is the person's question in their words, lowercase, no trailing question mark.",
-    "- if the text names no domain or host at all, use example.com as the target.",
+    "- if the text names no domain or host at all, use example.com as the only target.",
     "",
     "Worked examples:",
     examples,
@@ -115,7 +119,7 @@ export async function plan(ask: string): Promise<PlanOutcome> {
       providerOptions: { openai: { store: false } },
     })
 
-    const target = bareHost(output.target)
+    const targets = Array.from(new Set(output.targets.map(bareHost).filter(Boolean)))
     // A step whose verb is not a command would only ever render as a failed
     // slot, so drop it here rather than show a plan that was never going to
     // run.
@@ -123,10 +127,10 @@ export async function plan(ask: string): Promise<PlanOutcome> {
       .map((step) => step.trim())
       .filter((step) => VERBS.has(step.split(/\s+/)[0]?.toUpperCase() ?? ""))
 
-    if (!target || steps.length === 0) {
+    if (targets.length === 0 || steps.length === 0) {
       return refuse(text, "couldn’t turn that into commands. try naming the domain")
     }
-    return { ok: true, question: output.question, target, steps }
+    return { ok: true, question: output.question, targets, steps }
   } catch (error) {
     if (NoObjectGeneratedError.isInstance(error)) {
       return refuse(text, "couldn’t turn that into commands. try naming the domain")
