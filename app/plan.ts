@@ -22,7 +22,10 @@ import { z } from "zod"
 import { COMMANDS, type ParseFailure } from "@/app/commands/grammar"
 import { INVESTIGATIONS } from "@/lib/investigations"
 
-const MODEL = "gpt-5.6-luna"
+// Overridable without a deploy, because a retired model id keeps typechecking
+// (the provider's id union only grows) and would otherwise fail every call
+// silently until someone reads the logs.
+const MODEL = process.env.PLANNER_MODEL?.trim() || "gpt-5.6-luna"
 
 export type PlanOutcome =
   | { ok: true; question: string; target: string; steps: string[] }
@@ -42,6 +45,10 @@ const RUNNABLE = COMMANDS.filter((spec) => spec.endpoint)
 const VERBS = new Set<string>(RUNNABLE.map((spec) => spec.name))
 
 const HINT = "a command still works: TLS example.com, or WHY mail example.com"
+
+// Long enough for a structured answer, short enough that a stalled provider
+// cannot hold the function for the platform maximum.
+const DEADLINE_MS = 20_000
 
 function system(): string {
   const commands = RUNNABLE.map(
@@ -102,6 +109,7 @@ export async function plan(ask: string): Promise<PlanOutcome> {
       system: system(),
       prompt: text,
       maxOutputTokens: 400,
+      abortSignal: AbortSignal.timeout(DEADLINE_MS),
       // A public, keyless site. Nothing typed here should be kept anywhere it
       // can be read back, which is also what /privacy promises.
       providerOptions: { openai: { store: false } },
@@ -123,6 +131,13 @@ export async function plan(ask: string): Promise<PlanOutcome> {
     if (NoObjectGeneratedError.isInstance(error)) {
       return refuse(text, "couldn’t turn that into commands. try naming the domain")
     }
+    if (error instanceof Error && error.name === "TimeoutError") {
+      return refuse(text, "the planner took too long")
+    }
+    // Everything else is the provider or the network, and the only place it
+    // can be seen is the function log. Without this line a retired model id
+    // reads as "didn’t answer" forever.
+    console.error("[planner]", error instanceof Error ? error.message : error)
     return refuse(text, "the planner didn’t answer")
   }
 }
