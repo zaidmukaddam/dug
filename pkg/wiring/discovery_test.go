@@ -452,3 +452,20 @@ func TestDeprecationPolicyHasItsOwnPage(t *testing.T) {
 		t.Error("llms.txt does not name /deprecation, so an agent has no pointer to the policy")
 	}
 }
+
+// The same command set is offered twice, in the page and over /mcp, and the
+// two sets of annotations described the same answers differently: the page
+// said untrusted, the server said nothing. Both feed agents, so both say it.
+func TestRemoteAndPageToolsAgreeTheContentIsUntrusted(t *testing.T) {
+	root := repoRoot(t)
+
+	page := read(t, root, "lib", "webmcp.ts")
+	if !strings.Contains(page, "untrustedContentHint: true") {
+		t.Fatal("lib/webmcp.ts no longer marks tool content untrusted; decide for both sides, not one")
+	}
+
+	server := read(t, root, "pkg", "mcpx", "mcpx.go")
+	if !strings.Contains(server, `"untrustedContentHint": true`) {
+		t.Error("pkg/mcpx/mcpx.go does not mark tool content untrusted, so tools/list and the server card omit it")
+	}
+}

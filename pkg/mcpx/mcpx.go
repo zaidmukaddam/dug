@@ -77,6 +77,10 @@ func Tools() []any {
 			"annotations": map[string]any{
 				"readOnlyHint":    true,
 				"destructiveHint": false,
+				// The answer is built from whatever a third party nameserver,
+				// registry or web server returned, which is not content this
+				// server vouches for. The page tools say the same.
+				"untrustedContentHint": true,
 				// Every command reaches a third party that this tool does not
 				// control, so no result is reproducible from the input alone.
 				"openWorldHint": true,
