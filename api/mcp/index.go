@@ -39,6 +39,7 @@ import (
 	webmcpapi "github.com/zaidmukaddam/dug/api/webmcp"
 	"github.com/zaidmukaddam/dug/pkg/commands"
 	"github.com/zaidmukaddam/dug/pkg/mcpx"
+	"github.com/zaidmukaddam/dug/pkg/screen"
 )
 
 // The identity, the instructions and the tool list all live in pkg/mcpx now,
@@ -150,6 +151,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	case "tools/call":
 		writeRPC(w, callTool(r, req))
 
+	case "resources/list":
+		writeRPC(w, rpcResponse{JSONRPC: "2.0", ID: req.ID,
+			Result: map[string]any{"resources": mcpx.Resources()}})
+
+	case "resources/read":
+		writeRPC(w, readResource(r, req))
+
 	default:
 		writeRPC(w, rpcResponse{JSONRPC: "2.0", ID: req.ID,
 			Error: &rpcError{-32601, "method not found: " + req.Method}})
@@ -196,6 +204,36 @@ func callTool(r *http.Request, req rpcRequest) rpcResponse {
 	return rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{
 		"content": []any{map[string]any{"type": "text", "text": text}},
 		"isError": recorder.Code != http.StatusOK,
+	}}
+}
+
+// readResource serves the one resource this server publishes: the card, the
+// same document /.well-known/mcp/server-card.json answers, so a client that
+// is already connected can read it without a second HTTP fetch.
+func readResource(r *http.Request, req rpcRequest) rpcResponse {
+	var params struct {
+		URI string `json:"uri"`
+	}
+	if err := json.Unmarshal(req.Params, &params); err != nil {
+		return rpcResponse{JSONRPC: "2.0", ID: req.ID, Error: &rpcError{-32602, "invalid params"}}
+	}
+
+	if params.URI != mcpx.CardURI {
+		return rpcResponse{JSONRPC: "2.0", ID: req.ID,
+			Error: &rpcError{-32002, "resource not found: " + params.URI}}
+	}
+
+	body, err := json.Marshal(mcpx.Card(screen.Origin(r)))
+	if err != nil {
+		return rpcResponse{JSONRPC: "2.0", ID: req.ID, Error: &rpcError{-32603, "encoding failed"}}
+	}
+
+	return rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{
+		"contents": []any{map[string]any{
+			"uri":      params.URI,
+			"mimeType": "application/json",
+			"text":     string(body),
+		}},
 	}}
 }
 

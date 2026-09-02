@@ -29,10 +29,27 @@ const Instructions = "Live domain and network diagnostics. Every call is a fresh
 	"If a result mentions a degraded upstream, part of the answer is missing and the " +
 	"rest still stands."
 
-// Capabilities is what the server declares. Tools and nothing else, and no
-// listChanged: the set is fixed at build time.
+// CardURI is where the server card is exposed as an MCP resource, so a client
+// already connected can read it without a second HTTP fetch to .well-known.
+const CardURI = "mcp://server-card.json"
+
+// Capabilities is what the server declares. Tools and one resource, and no
+// listChanged or subscribe on either: both sets are fixed at build time.
 func Capabilities() map[string]any {
-	return map[string]any{"tools": map[string]any{}}
+	return map[string]any{"tools": map[string]any{}, "resources": map[string]any{}}
+}
+
+// Resources is the MCP resource list: the server card, at CardURI.
+func Resources() []any {
+	return []any{map[string]any{
+		"uri":   CardURI,
+		"name":  "server-card",
+		"title": "server card",
+		"description": "What initialize and tools/list would return, as one document, so a " +
+			"client can validate the tool set before it calls anything. The same card is at " +
+			"/.well-known/mcp/server-card.json.",
+		"mimeType": "application/json",
+	}}
 }
 
 // Card is the server card, SEP-1649: what a client would have learned from
