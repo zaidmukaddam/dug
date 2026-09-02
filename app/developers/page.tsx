@@ -94,7 +94,7 @@ export default function Developers() {
                 },
                 { label: "application/json", value: "Accept: application/json, or ?format=json" },
                 { label: "text/markdown", value: "Accept: text/markdown, on the pages" },
-                { label: "text/html", value: "the browser app, at /" },
+                { label: "text/html", value: "the browser app; a command url opened in a browser lands there with the command run" },
                 { label: "Vary", value: "Accept, User-Agent, so negotiation is cache safe" },
                 { label: "Cache-Control", value: "derived from the answer’s own TTL, floored at 30s" },
               ]}

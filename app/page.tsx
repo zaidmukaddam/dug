@@ -17,6 +17,7 @@ import { Frame, FrameRows } from "@/app/screens/frame"
 import { helpPayload } from "@/app/screens/help"
 import { Screen } from "@/app/screens/screen"
 import { ThemeToggle } from "@/components/theme-provider"
+import { useMountEffect } from "@/hooks/use-mount-effect"
 import { cacheKey, cacheSize, readCache, writeCache, type Payload } from "@/lib/cache"
 import { easeOutCubic } from "@/lib/graph-motion"
 import { plan, type PlanOutcome } from "@/app/plan"
@@ -267,6 +268,19 @@ export default function Page() {
   // asked for it without run() having to guess.
   const runForAgent = useCallback((text: string) => run(text, "agent"), [run])
   const webmcp = useWebMcp(runForAgent, investigate)
+
+  // A shared link. The proxy redirects dug.sh/tls/github.com opened in a
+  // browser to /?run=TLS+github.com, and this runs it as if it had been typed.
+  // The query is cleared first, so a reload after the answer is the landing
+  // and the second mount React performs in development finds nothing to run.
+  useMountEffect(() => {
+    const line = new URLSearchParams(window.location.search).get("run")?.trim()
+    if (!line) {
+      return
+    }
+    window.history.replaceState(null, "", "/")
+    void run(line)
+  })
 
   const submit = useCallback(async () => {
     const text = input.trim()
@@ -586,31 +600,19 @@ function Landing({
             })}
           </div>
 
+          {/* Two sentences, on purpose. The tools are registered in any
+              browser and nothing on the page can tell whether an agent is
+              listening, so this says where to get one and stops. */}
           <p className="max-w-3xl text-xs text-pretty text-graph-muted">
-            One question, three to five lookups, every screen kept under the question that
-            produced it. Click one, or type{" "}
-            <span className="text-foreground">why mail yourdomain.com</span> to point it at your
-            own, which means knowing there’s a topic called{" "}
-            <span className="text-foreground">mail</span>. An agent in this page doesn’t pick from
-            this list, and you don’t have to learn it: say the symptom, and it writes its own
-            sequence out of the {COMMANDS.length} commands below.
-          </p>
-
-          {/* The tools are registered in any browser, and in most of them nobody
-              is listening. Nothing on the page can detect that — the bridge
-              exposes no connection state — so rather than imply an agent is
-              here, say plainly where to get one. */}
-          <p className="max-w-3xl text-xs text-pretty text-graph-muted">
-            No agent in this browser? The page registers the tools either way, and nothing is
-            listening to them. Open this page in{" "}
+            Click one, or type <span className="text-foreground">why mail yourdomain.com</span>.
+            An agent in this page plans its own. No agent here? Open this page in{" "}
             <span className="text-foreground">ChatGPT’s browser</span>,{" "}
-            <span className="text-foreground">Codex</span>, or{" "}
-            <span className="text-foreground">Chrome with WebMCP enabled</span> and ask it to
-            investigate a domain. Everything here also answers over{" "}
+            <span className="text-foreground">Codex</span> or{" "}
+            <span className="text-foreground">Chrome with WebMCP enabled</span>, or call{" "}
             <Link href="/mcp" className="text-graph-accent hover:underline">
               /mcp
             </Link>{" "}
-            for an agent that isn’t in a browser at all.
+            from outside one.
           </p>
         </div>
       </Frame>
@@ -682,12 +684,10 @@ function Landing({
           and a good number of agents, saw twenty-two verbs and a resolver list
           and had to infer the rest. */}
       <p className="max-w-3xl text-xs leading-relaxed text-pretty text-graph-muted lg:col-span-3">
-        A command driven terminal for domain and network diagnostics. Every answer is a live
-        query made when you ask for it: nothing is precomputed, nothing is stored between
-        requests, and each answer says how old it is. The same URLs answer in plain
-        text for a terminal, JSON for a program and markdown for an agent.{" "}
-        <span className="text-foreground">curl dug.sh/tls/github.com</span> needs no key and no
-        signup. The grammar, the limits and the error model are written out at{" "}
+        Live domain and network diagnostics. Every answer is a fresh lookup that says how old it
+        is, and the same URLs answer in text for a terminal, JSON for a program and markdown for
+        an agent: <span className="text-foreground">curl dug.sh/tls/github.com</span> needs no
+        key. Details at{" "}
         <Link href="/developers" className="text-graph-accent hover:underline">
           /developers
         </Link>

@@ -211,6 +211,30 @@ function markdown(body: string, status = 200) {
   })
 }
 
+// A command url opened in a browser is a shared link, not an api call. The Go
+// handler behind it knows text and json and nothing else, so before this a
+// person tapping dug.sh/tls/github.com on a phone got raw json. Only a
+// navigation is redirected: a fetch() from a page sends */* and a script that
+// asked for html on purpose can still say ?format=json.
+function wantsApp(request: NextRequest): boolean {
+  if (request.method !== "GET" || request.nextUrl.searchParams.has("format")) {
+    return false
+  }
+  const mode = request.headers.get("sec-fetch-mode")
+  if (mode && mode !== "navigate") {
+    return false
+  }
+  return (request.headers.get("accept")?.toLowerCase() ?? "").includes("text/html")
+}
+
+// The pretty path back into the line a person would have typed. NET is the one
+// command whose argument contains a slash, so its two segments rejoin.
+function commandLine(pathname: string): string {
+  const [verb, ...rest] = pathname.split("/").filter(Boolean).map(decodeURIComponent)
+  const args = verb === "net" ? [rest.join("/")] : rest
+  return [verb.toUpperCase(), ...args].join(" ")
+}
+
 const ORIGIN = "https://dug.sh"
 
 function commandTable(): string {
@@ -357,6 +381,20 @@ export function proxy(request: NextRequest) {
   // action rather than the one that exists today means the next one is
   // covered before anyone remembers to add it.
   const isAction = request.method === "POST" && request.headers.has("next-action")
+
+  // Ahead of the quota: a redirect costs nothing upstream, and the command it
+  // leads to is counted when the app runs it.
+  if (isCommand && wantsApp(request)) {
+    const url = request.nextUrl.clone()
+    url.pathname = "/"
+    url.search = ""
+    url.searchParams.set("run", commandLine(pathname))
+    const response = NextResponse.redirect(url, 302)
+    // The same url answers json to curl, so no cache may keep this for it.
+    response.headers.set("vary", "Accept, User-Agent")
+    response.headers.set("cache-control", "no-store")
+    return response
+  }
 
   if (pathname.startsWith("/api/") || isCommand || pathname === "/mcp" || isAction) {
     // Counted before anything else, so a refused request is cheap and a caller

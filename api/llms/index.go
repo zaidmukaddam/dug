@@ -31,7 +31,8 @@ representations of the same data:
 
 - text/plain  the default for curl and other terminal clients
 - application/json  send Accept: application/json, or ?format=json
-- text/html  the browser app at /
+- text/html  the browser app at /. A command url opened in a browser is sent
+  there with the command run, so a shared link shows the screen, not json
 
 Ask for text explicitly with ?format=text. Responses carry
 Vary: Accept, User-Agent, and a Cache-Control whose lifetime is derived from

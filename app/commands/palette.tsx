@@ -221,10 +221,9 @@ export function Palette({
                 signal the platform offers for "no physical keyboard". */}
             <span className="pointer-coarse:hidden">
               {" · tab completes"}
-              {/* History is per page load, like the cache, so on a fresh page
-                  the arrows do nothing. Claiming otherwise makes a working
-                  feature look broken the one time most people try it. */}
-              {history.length > 0 ? " · up and down walk history" : null}
+              {/* Only while there is something for it to clear. The arrow keys
+                  go unannounced: history is per page load and the hint was one
+                  more clause on a line that already had too many. */}
               {clearable ? " · esc clears the screen" : null}
             </span>
             {/* What is on the page for an agent, said where a person will see
@@ -240,8 +239,7 @@ export function Palette({
               </>
             ) : null}
             {" · "}
-            <span className="font-mono">why mail example.com</span> investigates · or ask in
-            plain words
+            <span className="font-mono">why mail example.com</span>, or ask in plain words
           </>
         )}
       </p>
