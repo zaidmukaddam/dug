@@ -29,10 +29,67 @@ const Instructions = "Live domain and network diagnostics. Every call is a fresh
 	"If a result mentions a degraded upstream, part of the answer is missing and the " +
 	"rest still stands."
 
-// Capabilities is what the server declares. Tools and nothing else, and no
-// listChanged: the set is fixed at build time.
+// CardURI is where the server card is exposed as an MCP resource, so a client
+// already connected can read it without a second HTTP fetch to .well-known.
+const CardURI = "mcp://server-card.json"
+
+// Capabilities is what the server declares. Tools and one resource, and no
+// listChanged or subscribe on either: both sets are fixed at build time.
 func Capabilities() map[string]any {
-	return map[string]any{"tools": map[string]any{}}
+	return map[string]any{"tools": map[string]any{}, "resources": map[string]any{}}
+}
+
+// Resources is the MCP resource list: the server card, at CardURI.
+func Resources() []any {
+	return []any{map[string]any{
+		"uri":   CardURI,
+		"name":  "server-card",
+		"title": "server card",
+		"description": "What initialize and tools/list would return, as one document, so a " +
+			"client can validate the tool set before it calls anything. The same card is at " +
+			"/.well-known/mcp/server-card.json.",
+		"mimeType": "application/json",
+	}}
+}
+
+// Card is the server card, SEP-1649: what a client would have learned from
+// initialize plus tools/list, without the handshake, so it can decide whether
+// to connect and validate every tool description before it does.
+//
+// The one place the document is built, so the HTTP card and the MCP resource
+// that both serve it cannot drift apart from each other.
+func Card(origin string) map[string]any {
+	return map[string]any{
+		// The card document's own schema version, not the server's.
+		"version":         "1.0",
+		"protocolVersion": ProtocolVersion,
+		"serverInfo": map[string]any{
+			"name":    ServerName,
+			"title":   ServerTitle,
+			"version": ServerVersion,
+		},
+		"description": "Live domain and network diagnostics: dns, tls, mail, rdap, addressing and " +
+			"routing. Every call is a fresh lookup and nothing is stored between calls.",
+		"documentationUrl": origin + "/developers",
+		"transport": map[string]any{
+			"type": "streamable-http",
+			// A path rather than a url, which is what the SEP asks for. /api/mcp
+			// is the same endpoint and also answers.
+			"endpoint": "/mcp",
+		},
+		"capabilities": Capabilities(),
+		// Stated rather than omitted: "none needed" is a fact a client wants
+		// before connecting, and an absent field only says nobody wrote one down.
+		"authentication": map[string]any{
+			"required": false,
+			"schemes":  []any{},
+		},
+		"instructions": Instructions,
+		// Static rather than the reserved string "dynamic": the set is fixed at
+		// build time, so charging a client a tools/list round trip to learn it
+		// would be the cost this document exists to remove.
+		"tools": Tools(),
+	}
 }
 
 // ToolName is the one place the prefix lives. It is also how a call is routed

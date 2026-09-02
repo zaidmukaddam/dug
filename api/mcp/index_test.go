@@ -7,10 +7,29 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/zaidmukaddam/dug/pkg/commands"
+	"github.com/zaidmukaddam/dug/pkg/mcpx"
 )
+
+// rpcCall runs one JSON-RPC request through the real Handler and decodes the
+// response, the way pkg/wiring's discovery tests do.
+func rpcCall(t *testing.T, body string) rpcResponse {
+	t.Helper()
+	request := httptest.NewRequest(http.MethodPost, "/api/mcp", strings.NewReader(body))
+	request.Header.Set("Content-Type", "application/json")
+
+	recorder := httptest.NewRecorder()
+	Handler(recorder, request)
+
+	var response rpcResponse
+	if err := json.NewDecoder(recorder.Result().Body).Decode(&response); err != nil {
+		t.Fatalf("decoding the rpc response: %v", err)
+	}
+	return response
+}
 
 // Arguments as they arrive: over the wire, where 4 is a JSON number and
 // decodes as a float64.
@@ -121,5 +140,90 @@ func TestToolQueryRefusesNonScalarArguments(t *testing.T) {
 	spec, _ := commands.ByName("DIG")
 	if _, err := toolQuery(spec, arguments(t, `{"target": ["example.com"]}`)); err == nil {
 		t.Error("an array argument was accepted")
+	}
+}
+
+// The resource list has exactly the one entry the server card publishes, at
+// the uri a client would then read it from.
+func TestResourcesListReturnsTheCard(t *testing.T) {
+	response := rpcCall(t, `{"jsonrpc":"2.0","id":1,"method":"resources/list","params":{}}`)
+	if response.Error != nil {
+		t.Fatalf("resources/list returned an error: %v", response.Error)
+	}
+
+	result, _ := response.Result.(map[string]any)
+	resources, _ := result["resources"].([]any)
+	if len(resources) != 1 {
+		t.Fatalf("resources/list returned %d resources, want 1", len(resources))
+	}
+
+	resource, _ := resources[0].(map[string]any)
+	if resource["uri"] != mcpx.CardURI {
+		t.Errorf("resource uri is %v, want %v", resource["uri"], mcpx.CardURI)
+	}
+}
+
+// Reading the card resource returns the same document the HTTP card serves:
+// the same server identity and the same tool set.
+func TestResourcesReadReturnsTheCard(t *testing.T) {
+	body := `{"jsonrpc":"2.0","id":1,"method":"resources/read","params":{"uri":"` + mcpx.CardURI + `"}}`
+	response := rpcCall(t, body)
+	if response.Error != nil {
+		t.Fatalf("resources/read returned an error: %v", response.Error)
+	}
+
+	result, _ := response.Result.(map[string]any)
+	contents, _ := result["contents"].([]any)
+	if len(contents) != 1 {
+		t.Fatalf("resources/read returned %d contents, want 1", len(contents))
+	}
+
+	content, _ := contents[0].(map[string]any)
+	if content["mimeType"] != "application/json" {
+		t.Errorf("content mimeType is %v, want application/json", content["mimeType"])
+	}
+
+	text, _ := content["text"].(string)
+	var card struct {
+		ServerInfo struct {
+			Name string `json:"name"`
+		} `json:"serverInfo"`
+		Tools []any `json:"tools"`
+	}
+	if err := json.Unmarshal([]byte(text), &card); err != nil {
+		t.Fatalf("resource text does not parse as json: %v", err)
+	}
+	if card.ServerInfo.Name != "dug" {
+		t.Errorf("resource card serverInfo.name is %q, want dug", card.ServerInfo.Name)
+	}
+	if len(card.Tools) != len(mcpx.Tools()) {
+		t.Errorf("resource card lists %d tools, want %d", len(card.Tools), len(mcpx.Tools()))
+	}
+}
+
+// An unknown uri is the resource-not-found error the spec names, not a
+// generic failure.
+func TestResourcesReadUnknownURI(t *testing.T) {
+	response := rpcCall(t, `{"jsonrpc":"2.0","id":1,"method":"resources/read","params":{"uri":"mcp://nope"}}`)
+	if response.Error == nil {
+		t.Fatal("resources/read of an unknown uri returned no error")
+	}
+	if response.Error.Code != -32002 {
+		t.Errorf("error code is %d, want -32002", response.Error.Code)
+	}
+}
+
+// initialize's capabilities have to say resources now, or a client has no way
+// to learn the resource exists short of just trying resources/list.
+func TestInitializeCapabilitiesIncludeResources(t *testing.T) {
+	response := rpcCall(t, `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`)
+	if response.Error != nil {
+		t.Fatalf("initialize returned an error: %v", response.Error)
+	}
+
+	result, _ := response.Result.(map[string]any)
+	capabilities, _ := result["capabilities"].(map[string]any)
+	if _, ok := capabilities["resources"]; !ok {
+		t.Errorf("initialize capabilities %v do not include resources", capabilities)
 	}
 }
