@@ -42,7 +42,7 @@ type Entry =
       kind: "case"
       id: number
       question: string
-      target: string
+      targets: string[]
       planned: string[]
       source: Source
       // Sparse until the plan finishes: index n is the nth planned command.
@@ -250,11 +250,11 @@ export default function Page() {
   // lands, so the first is readable while the fourth is still in flight. That
   // is the reason this renders onto a page instead of returning a summary.
   const investigate = useCallback(
-    async (question: string, target: string, planned: string[], source: Source = "agent") => {
+    async (question: string, targets: string[], planned: string[], source: Source = "agent") => {
       nextId.current += 1
       const caseId = nextId.current
       setEntries((current) => [
-        { kind: "case" as const, id: caseId, question, target, planned, source, steps: [] },
+        { kind: "case" as const, id: caseId, question, targets, planned, source, steps: [] },
         ...current,
       ].slice(0, 12))
 
@@ -317,12 +317,8 @@ export default function Page() {
       if (why?.ok) {
         setInput("")
         setFailure(null)
-        await investigate(
-          why.investigation.question,
-          why.target,
-          why.investigation.steps(why.target),
-          "you"
-        )
+        const steps = why.targets.flatMap((target) => why.investigation.steps(target))
+        await investigate(why.investigation.question, why.targets, steps, "you")
         return
       }
 
@@ -356,7 +352,7 @@ export default function Page() {
           setInput("")
           setInFlight((inFlight) => inFlight - 1)
           settled = true
-          await investigate(plan.question, plan.target, plan.steps, "dug")
+          await investigate(plan.question, [plan.target], plan.steps, "dug")
         } finally {
           if (!settled) {
             setInFlight((inFlight) => inFlight - 1)
@@ -492,7 +488,7 @@ export default function Page() {
               onInvestigate={(investigation, target) => {
                 void investigate(
                   investigation.question,
-                  target,
+                  [target],
                   investigation.steps(target),
                   "you"
                 )
@@ -511,7 +507,7 @@ export default function Page() {
               <CaseFile
                 key={entry.id}
                 question={entry.question}
-                target={entry.target}
+                targets={entry.targets}
                 steps={entry.steps}
                 planned={entry.planned}
                 plannedBy={entry.source === "you" ? null : entry.source}
@@ -574,6 +570,8 @@ const SAMPLE: Record<string, string> = {
   tls: "stripe.com",
   reachability: "cloudflare.com",
   agents: "vercel.com",
+  down: "github.com",
+  domain: "cloudflare.com",
 }
 
 // Built out of the same dashed frames an answer is, so the first thing on

@@ -17,8 +17,9 @@ export type Investigation = {
   steps: (target: string) => string[]
 }
 
-// `WHY <topic> <target>` at the prompt, so a person can run one against their
-// own domain rather than only against the landing's examples.
+// `WHY <topic> <target> [, <target>...]` at the prompt, so a person can run one
+// against their own domain, or several at once, rather than only against the
+// landing's examples.
 //
 // Handled before parse() rather than added to the command grammar, because it
 // is not a command: there is no endpoint that could answer it. One request
@@ -28,7 +29,7 @@ export type Investigation = {
 // is one and is wrong, which has to be said here: falling through would report
 // "why is not a command" for a mistyped topic, when why is exactly what it is.
 export type InvestigationMatch =
-  | { ok: true; investigation: Investigation; target: string }
+  | { ok: true; investigation: Investigation; targets: string[] }
   | { ok: false; failure: ParseFailure }
 
 export function matchInvestigation(text: string): InvestigationMatch | null {
@@ -51,8 +52,12 @@ export function matchInvestigation(text: string): InvestigationMatch | null {
     }
   }
 
-  const target = rest.join(" ").trim()
-  if (!target) {
+  const targets = rest
+    .join(" ")
+    .split(/[\s,]+/)
+    .map((target) => target.trim())
+    .filter(Boolean)
+  if (!targets.length) {
     return {
       ok: false,
       failure: {
@@ -62,7 +67,19 @@ export function matchInvestigation(text: string): InvestigationMatch | null {
       },
     }
   }
-  return { ok: true, investigation, target }
+  return { ok: true, investigation, targets }
+}
+
+// A step written with {target} runs once per target, in target order, so a
+// fleet reads as one case per domain rather than one command across all of
+// them. A step without the placeholder runs once as written.
+export function expandSteps(steps: string[], targets: string[]): string[] {
+  if (!steps.some((step) => step.includes("{target}"))) {
+    return steps
+  }
+  return targets.flatMap((target) =>
+    steps.map((step) => step.replaceAll("{target}", target))
+  )
 }
 
 export const INVESTIGATIONS: Investigation[] = [
@@ -90,5 +107,15 @@ export const INVESTIGATIONS: Investigation[] = [
     id: "agents",
     question: "can an agent read and understand this site",
     steps: (target) => [`SEO ${target}`, `AEO ${target}`, `WEBMCP ${target}`, `OG ${target}`],
+  },
+  {
+    id: "down",
+    question: "is this site down for everyone or only for me",
+    steps: (target) => [`HTTP ${target}`, `PING ${target}`, `TLS ${target}`, `PROP ${target}`],
+  },
+  {
+    id: "domain",
+    question: "is this domain’s registration and delegation healthy",
+    steps: (target) => [`RDAP ${target}`, `NS ${target}`, `DNSSEC ${target}`, `TTL ${target}`],
   },
 ]

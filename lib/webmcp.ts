@@ -27,14 +27,14 @@ import { useEffectEvent, useState } from "react"
 import { COMMANDS } from "@/app/commands/grammar"
 import { useMountEffect } from "@/hooks/use-mount-effect"
 import type { Payload } from "@/lib/cache"
-import { INVESTIGATIONS } from "@/lib/investigations"
+import { expandSteps, INVESTIGATIONS } from "@/lib/investigations"
 
 type ToolDescriptor = {
   name: string
   description: string
   inputSchema: {
     type: "object"
-    properties: Record<string, { type: string; description: string }>
+    properties: Record<string, { type: string; description: string; items?: { type: string } }>
     required: string[]
   }
   execute: (input: Record<string, string>) => Promise<unknown>
@@ -180,7 +180,7 @@ export function useWebMcp(
   run: (text: string) => Promise<Payload | null>,
   investigate: (
     question: string,
-    target: string,
+    targets: string[],
     steps: string[]
   ) => Promise<{ command: string; payload: Payload }[]>
 ): WebMcpStatus {
@@ -276,7 +276,8 @@ export function useWebMcp(
       name: "dug_investigate",
       description:
         "Answer a question that takes more than one lookup, and build the case on the page " +
-        "while you do. You choose the commands and the order: this is your plan, not a preset. " +
+        "while you do. You choose the commands and the order: this is your plan, not a preset, " +
+        "and a step written with {target} runs once per target when targets has more than one. " +
         "Each screen is left on the page, in sequence, under the question that produced it, " +
         "so the person watching ends up with the evidence, not your summary of it. " +
         "Prefer this over calling the single-command tools yourself whenever the person has " +
@@ -299,7 +300,14 @@ export function useWebMcp(
           },
           target: {
             type: "string",
-            description: "The domain or host under investigation, for the case file heading.",
+            description: "The one domain or host under investigation; use targets for more than one.",
+          },
+          targets: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              "Several domains or hosts under one question. Write each step with {target} " +
+              "where the name goes and it runs once per target, in this order.",
           },
           steps: {
             type: "array",
@@ -309,35 +317,47 @@ export function useWebMcp(
               "enough to be conclusive, few enough to read.",
           },
         },
-        required: ["question", "target", "steps"],
+        required: ["question", "steps"],
       },
       annotations: { readOnlyHint: true, untrustedContentHint: true },
       execute: async (input) => {
         const question = (input?.question ?? "").trim()
+        // A model may hand targets back as an array, or fall back to the
+        // single-target field. Both are obviously meant.
+        const rawTargets = input?.targets
+        const listed = (Array.isArray(rawTargets) ? rawTargets : [])
+          .map((target) => String(target).trim())
+          .filter(Boolean)
         const target = (input?.target ?? "").trim()
-        // A model may hand this back as an array or, less often, as a
+        const targets = listed.length > 0 ? listed : target ? [target] : []
+
+        // A model may hand steps back as an array or, less often, as a
         // newline or comma separated string. Both are obviously meant.
         const raw = input?.steps
-        const steps = (Array.isArray(raw) ? raw : String(raw ?? "").split(/[\n,]/))
+        const rawSteps = (Array.isArray(raw) ? raw : String(raw ?? "").split(/[\n,]/))
           .map((step) => String(step).trim())
           .filter(Boolean)
 
-        if (!question || !target || steps.length === 0) {
+        if (!question || targets.length === 0 || rawSteps.length === 0) {
           return {
             content: [
               {
                 type: "text",
-                text: "investigate needs a question, a target, and at least one command to run",
+                text: "investigate needs a question, at least one target, and at least one command to run",
               },
             ],
             isError: true,
           }
         }
 
-        const found = await investigateLatest(question, target, steps)
+        const steps = expandSteps(rawSteps, targets)
+
+        const found = await investigateLatest(question, targets, steps)
         if (found.length === 0) {
           return {
-            content: [{ type: "text", text: `none of those commands could run against ${target}` }],
+            content: [
+              { type: "text", text: `none of those commands could run against ${targets.join(", ")}` },
+            ],
             isError: true,
           }
         }
@@ -352,7 +372,7 @@ export function useWebMcp(
         // walking every block, and the payloads underneath so it can if it
         // wants to. The person already has the screens.
         const summary = [
-          `${question}: ${target}`,
+          `${question}: ${targets.join(", ")}`,
           ...found.map((step) => `\n${step.command}\n${describe(step.payload)}`),
           ...(skipped.length > 0 ? [`\nnot run: ${skipped.join(", ")}`] : []),
         ].join("\n")
@@ -361,7 +381,7 @@ export function useWebMcp(
           content: [{ type: "text", text: summary }],
           structuredContent: {
             question,
-            target,
+            targets,
             steps: found.map((step) => ({ command: step.command, payload: step.payload })),
             skipped,
           },
