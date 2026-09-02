@@ -226,3 +226,25 @@ func TestRateLimitConstantsAgree(t *testing.T) {
 		}
 	}
 }
+
+// The cells component fills a cell only on the exact value 1, and the net
+// handler is its only emitter. A different value on either side draws every
+// address as unnamed while the headline counts the named ones, which is what
+// shipped once. Both sides are pinned here because neither compiler sees the
+// other.
+func TestNetGridCellsUseTheValueTheComponentFills(t *testing.T) {
+	root := repoRoot(t)
+
+	component := read(t, root, "components", "graph-cells.tsx")
+	if !strings.Contains(component, "const filled = cell === 1") {
+		t.Fatal("components/graph-cells.tsx no longer fills on cell === 1; update the net handler and this test together")
+	}
+
+	handler := read(t, root, "api", "addr", "index.go")
+	if !strings.Contains(handler, "value = 1") {
+		t.Error("api/addr/index.go does not mark a named address with 1, so the cells component draws it as empty")
+	}
+	if strings.Contains(handler, "value = 4") {
+		t.Error("api/addr/index.go still marks a named address with 4, which the cells component draws as empty")
+	}
+}

@@ -334,7 +334,10 @@ func runNet(r *http.Request, result *screen.Result, target string) {
 	for i, answer := range answers {
 		value := 0
 		if len(answer.Records) > 0 {
-			value = 4
+			// 1, because the cells component fills a cell only on exactly 1.
+			// Any other positive value draws as empty, which is how every net
+			// grid shipped blank under a headline counting named addresses.
+			value = 1
 			named++
 			if len(namedRows) < 20 {
 				namedRows = append(namedRows, []string{
