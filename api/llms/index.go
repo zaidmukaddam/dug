@@ -255,8 +255,9 @@ looking, which is the only thing the investigation adds.
 
 The prompt also has a planner of its own for a person typing without an agent:
 a sentence in plain words becomes a plan, and the case is headed "planned by
-dug". It isn’t an endpoint and you don’t need it. You are the planner. Call
-dug_investigate with your own steps.
+dug". The text typed there is sent to OpenAI with retention turned off, and
+nothing else on the site reaches a model provider. It isn’t an endpoint and you
+don’t need it. You are the planner. Call dug_investigate with your own steps.
 
     const tools = await document.modelContext.getTools()
     await document.modelContext.executeTool(tool, '{"target":"github.com"}')

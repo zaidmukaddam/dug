@@ -26,9 +26,10 @@ export const metadata: Metadata = {
 }
 
 // Every claim here is a property of the code as it stands: there is no database
-// in this project, no session, no cookie set by the app, and the two analytics
-// scripts are the only third parties on the page. Nothing on this page is a
-// promise about intent; it is a description of what the deployment does.
+// in this project, no session, no cookie set by the app, and the third parties
+// are the two analytics scripts and, only for the planner, the model provider.
+// Nothing on this page is a promise about intent; it is a description of what
+// the deployment does.
 export default function Privacy() {
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-5 py-6 sm:px-8">
@@ -73,7 +74,8 @@ export default function Privacy() {
             <div className="flex flex-col gap-4">
               <p className="text-sm text-pretty text-graph-muted">
                 The site is hosted on Vercel, which terminates TLS and therefore sees request
-                metadata as any host does. Two Vercel scripts run on the page:
+                metadata as any host does. Two Vercel scripts run on the page, and one model
+                provider is called from the prompt:
               </p>
               <FrameRows
                 rows={[
@@ -86,11 +88,18 @@ export default function Privacy() {
                     label: "Speed Insights",
                     value: "anonymous page timing, sampled",
                   },
+                  {
+                    label: "OpenAI",
+                    value:
+                      "receives the sentence you type in plain words, only when the planner runs, with retention turned off",
+                  },
                 ]}
               />
               <p className="text-xs text-graph-muted">
-                Vercel injects both only on a deployment, so a local run of this project sends
-                no beacons at all.
+                Vercel injects both scripts only on a deployment, so a local run of this project
+                sends no beacons at all. A command such as TLS example.com never reaches the
+                model provider: the planner runs only for a question in plain words, sends that
+                text and nothing else, and asks the provider not to store it.
               </p>
             </div>
           </Frame>
