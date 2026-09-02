@@ -11,6 +11,7 @@ package screen
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -170,6 +171,32 @@ func blockText(block Block) string {
 		}
 		return pairText(pairs)
 
+	case PlotProps:
+		return tableText([]string{}, seriesRows(p.Labels, p.Data))
+
+	case SparkProps:
+		var b strings.Builder
+		b.WriteString(tableText([]string{}, seriesRows(nil, p.Data)))
+		if p.Caption != "" {
+			fmt.Fprintf(&b, "%s%s\n", indent, p.Caption)
+		}
+		return b.String()
+
+	case BarsProps:
+		// One row per series, not per bar: an individual bar carries no label
+		// of its own (BarSeries is a title plus a slice of values in list
+		// order), so the series label is the only real label there is.
+		rows := [][]string{
+			{p.From.Label, joinInts(p.From.Values)},
+			{p.To.Label, joinInts(p.To.Values)},
+		}
+		var b strings.Builder
+		b.WriteString(tableText([]string{}, rows))
+		if p.Processor != "" {
+			fmt.Fprintf(&b, "%s%s\n", indent, p.Processor)
+		}
+		return b.String()
+
 	case SlopeProps:
 		rows := make([][]string, 0, len(p.Items))
 		for _, item := range p.Items {
@@ -258,6 +285,27 @@ func blockText(block Block) string {
 	case WaffleProps:
 		return percentText(p.Value, p.Caption)
 
+	case CellsProps:
+		// CellGrid carries one label for the whole grid, not a label per row
+		// or per column, so the table gets a row label (repeated only on a
+		// grid's first row) and a glyph string; no header row, since there
+		// are no column labels to put in one.
+		var rows [][]string
+		for _, item := range p.Items {
+			for i, cellRow := range item.Cells {
+				label := ""
+				if i == 0 {
+					label = item.Label
+				}
+				glyphs := make([]string, len(cellRow))
+				for j, v := range cellRow {
+					glyphs[j] = cellGlyph(v)
+				}
+				rows = append(rows, []string{label, strings.Join(glyphs, "")})
+			}
+		}
+		return tableText([]string{}, rows)
+
 	case TimerProps:
 		if p.Caption == "" {
 			return ""
@@ -289,6 +337,51 @@ func writeTree(b *strings.Builder, nodes []TreeNode, prefix string) {
 		}
 		b.WriteString("\n")
 		writeTree(b, node.Children, prefix+"  ")
+	}
+}
+
+// seriesRows lays a plot or spark series out as x/y rows, x taken from labels
+// where one exists at that index and the point's index otherwise. A spark is
+// a shape, not a table, so past 24 points the middle is replaced by a count
+// rather than printed in full: this is the one place in blockText where a
+// count stands in for content instead of rendering all of it.
+func seriesRows(labels []string, data []int) [][]string {
+	rows := make([][]string, len(data))
+	for i, v := range data {
+		x := strconv.Itoa(i)
+		if i < len(labels) {
+			x = labels[i]
+		}
+		rows[i] = []string{x, strconv.Itoa(v)}
+	}
+	if len(rows) <= 24 {
+		return rows
+	}
+	out := make([][]string, 0, 25)
+	out = append(out, rows[:12]...)
+	out = append(out, []string{"…", fmt.Sprintf("(%d points)", len(rows))})
+	out = append(out, rows[len(rows)-12:]...)
+	return out
+}
+
+func joinInts(values []int) string {
+	parts := make([]string, len(values))
+	for i, v := range values {
+		parts[i] = strconv.Itoa(v)
+	}
+	return strings.Join(parts, " ")
+}
+
+// cellGlyph mirrors the frontend's cells grid, which draws a cell only on
+// exactly 1 and leaves every other value blank.
+func cellGlyph(v int) string {
+	switch v {
+	case 1:
+		return "x"
+	case 0:
+		return "."
+	default:
+		return strconv.Itoa(v)
 	}
 }
 
