@@ -13,6 +13,7 @@
     "lint": "biome lint .",
     "lint:fix": "biome lint --write .",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
     "test:api": "go test -short ./pkg/... ./api/... ./cmd/...",
     "test:live": "go test ./pkg/... -run 'Live|Spread|Traceroute|Expired' -v",
