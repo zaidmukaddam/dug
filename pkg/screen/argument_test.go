@@ -108,6 +108,30 @@ func TestArgumentRefusesAnEmptyTarget(t *testing.T) {
 	}
 }
 
+// PING's argument kind is "endpoint" in the grammar, but nobody types
+// "endpoint" — the refusal has to read as a word a person would type.
+func TestArgumentNamesAnEndpointArgumentAsHost(t *testing.T) {
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/api/probe?format=json", nil)
+
+	_, _, ok := Argument(recorder, request, "/api/probe", "PING")
+
+	if ok {
+		t.Fatalf("ok = true, want false")
+	}
+
+	var payload Payload
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("body is not json: %v", err)
+	}
+	if payload.Error == nil {
+		t.Fatal("payload.error is absent on a refusal")
+	}
+	if payload.Error.Message != "no host given" {
+		t.Errorf("message = %q, want %q", payload.Error.Message, "no host given")
+	}
+}
+
 // Padding around a target is a copy-paste accident, not intent, and it used
 // to be the handler's job to strip it. Now it is the helper's, once, for
 // every caller.

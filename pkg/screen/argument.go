@@ -33,9 +33,17 @@ func Argument(w http.ResponseWriter, req *http.Request, endpoint, fallback strin
 	}
 
 	if target == "" {
-		Fail(w, req, command, "", "no "+spec.Argument+" given", "this command needs "+spec.TargetAbout())
+		// spec.Argument is the grammar's kind name; "endpoint" and "pair" are
+		// not words a person would type in a refusal, so they get read as nouns.
+		noun := argumentNoun[spec.Argument]
+		if noun == "" {
+			noun = spec.Argument
+		}
+		Fail(w, req, command, "", "no "+noun+" given", "this command needs "+spec.TargetAbout())
 		return "", "", false
 	}
 
 	return command, target, true
 }
+
+var argumentNoun = map[string]string{"endpoint": "host", "pair": "domain"}
