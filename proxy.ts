@@ -11,7 +11,7 @@
 //
 // proxy.ts, not middleware.ts: the middleware convention is deprecated in Next
 // 16 and the export is renamed with it. Proxy runs on the nodejs runtime and
-// cannot be switched to edge, which costs this nothing — the imports below are
+// cannot be switched to edge, which costs this nothing: the imports below are
 // plain typescript over two constant lists.
 //
 // The markdown responses below set their own Vary, because they are returned
@@ -19,8 +19,8 @@
 //
 // The html variant cannot carry one. Next owns Vary on a page response and
 // replaces any configured value with its own router list. That was measured at
-// all three layers available — this proxy, next.config headers(), and
-// vercel.json edge headers — each time with a probe header alongside it: the
+// all three layers available (this proxy, next.config headers(), and
+// vercel.json edge headers), each time with a probe header alongside it: the
 // probe landed every time and the Vary never did.
 //
 // The negotiation is still safe, because this runs ahead of the cache. A
@@ -30,9 +30,10 @@
 
 import { NextResponse, type NextRequest } from "next/server"
 
-import { COMMANDS, FAMILIES } from "@/app/commands/grammar"
+import { COMMANDS, FAMILIES, NOT_HERE } from "@/app/commands/grammar"
 import { commandLine } from "@/lib/command-line"
 import { RESOLVERS } from "@/lib/resolvers"
+import { MACHINE_READABLE, READING_A_SCREEN, THE_GUARD } from "@/lib/site-copy"
 
 // The pretty path prefixes the Go functions answer on, derived rather than
 // listed so a new command cannot be missing from it.
@@ -228,18 +229,16 @@ function wantsApp(request: NextRequest): boolean {
   return (request.headers.get("accept")?.toLowerCase() ?? "").includes("text/html")
 }
 
-const ORIGIN = "https://dug.sh"
-
 function commandTable(): string {
   return FAMILIES.map((family) => {
-    const rows = COMMANDS.filter((spec) => spec.family === family)
-      .map((spec) => `- \`${spec.name.toLowerCase()}\` — ${spec.summary}. Example: \`${spec.example}\``)
+    const rows = COMMANDS.filter((spec) => spec.family === family && spec.endpoint)
+      .map((spec) => `- \`${spec.name.toLowerCase()}\`: ${spec.summary}. Example: \`${spec.example}\``)
       .join("\n")
     return `### ${family}\n\n${rows}`
   }).join("\n\n")
 }
 
-function homeMarkdown(): string {
+function homeMarkdown(origin: string): string {
   return `# dug
 
 Live domain and network diagnostics. Every answer is a fresh lookup made when
@@ -248,9 +247,9 @@ and each answer is labelled with how old it is.
 
 Every endpoint is a GET, needs no key and no signup.
 
-    curl ${ORIGIN}/tls/github.com
-    curl ${ORIGIN}/dig/example.com/MX
-    curl -H 'Accept: application/json' ${ORIGIN}/mail/github.com
+    curl ${origin}/tls/github.com
+    curl ${origin}/dig/example.com/MX
+    curl -H 'Accept: application/json' ${origin}/mail/github.com
 
 ## Commands
 
@@ -260,21 +259,21 @@ ${commandTable()}
 
 A fixed list that a query cannot point elsewhere:
 
-${RESOLVERS.map((resolver) => `- ${resolver.name} — \`${resolver.ip}\``).join("\n")}
+${RESOLVERS.map((resolver) => `- ${resolver.name}: \`${resolver.ip}\``).join("\n")}
 
 ## More
 
-- [/llms.txt](${ORIGIN}/llms.txt) — the full grammar, the limits, and when to use this
-- [/openapi.json](${ORIGIN}/openapi.json) — OpenAPI 3.1, one operation per command
-- [/mcp](${ORIGIN}/mcp) — MCP server, Streamable HTTP, one tool per command
-- [/server.json](${ORIGIN}/server.json) — the MCP server manifest, if you are adding it to a client
-- [/developers](${ORIGIN}/developers) — calling it, the error model, versioning
-- [/deprecation](${ORIGIN}/deprecation) — how a route is retired, and how much notice
-- [/about](${ORIGIN}/about) — how a screen is read and what the guard refuses
+- [/llms.txt](${origin}/llms.txt): the full grammar, the limits, and when to use this
+- [/openapi.json](${origin}/openapi.json): OpenAPI 3.1, one operation per command
+- [/mcp](${origin}/mcp): MCP server, Streamable HTTP, one tool per command
+- [/server.json](${origin}/server.json): the MCP server manifest, if you are adding it to a client
+- [/developers](${origin}/developers): calling it, the error model, versioning
+- [/deprecation](${origin}/deprecation): how a route is retired, and how much notice
+- [/about](${origin}/about): how a screen is read and what the guard refuses
 `
 }
 
-function aboutMarkdown(): string {
+function aboutMarkdown(origin: string): string {
   return `# About dug
 
 Live domain and network diagnostics. Every screen is a lookup made when you
@@ -283,61 +282,53 @@ each answer is labelled with how old it is.
 
 ## Reading a screen
 
-- **the verdict** — the answer in one sentence, read it first
-- **the blocks** — the evidence for it
-- \`[*] live\` — answered just now
-- \`[~] cached\` — held under its own ttl, age shown
-- **degraded** — an upstream failed, the rest of the answer still stands
-- **none** — checked and absent, not skipped
+${READING_A_SCREEN.map((row) => `- **${row.label}**: ${row.value}`).join("\n")}
 
 ## The address guard
 
-Every destination is validated in the dialer, after the name resolves and
-immediately before connect. It covers every candidate address rather than just
-the first, refuses private, loopback, link-local, cgnat and reserved space,
-judges ipv4-in-ipv6 by the address inside rather than the wrapper, and holds
-outbound ports to an allowlist that only PORTS waives.
+${THE_GUARD.map((row) => `- **${row.label}**: ${row.value}`).join("\n")}
+
+## Deliberately not here
+
+${NOT_HERE.map((item) => `- **${item.label}**: ${item.reason}`).join("\n")}
 
 ## Resolvers
 
-${RESOLVERS.map((resolver) => `- ${resolver.name} — \`${resolver.ip}\``).join("\n")}
+${RESOLVERS.map((resolver) => `- ${resolver.name}: \`${resolver.ip}\``).join("\n")}
 
 ## Machine readable
 
-- [/llms.txt](${ORIGIN}/llms.txt)
-- [/openapi.json](${ORIGIN}/openapi.json)
-- [/mcp](${ORIGIN}/mcp)
-- [/developers](${ORIGIN}/developers)
+${MACHINE_READABLE.map((item) => `- [${item.href}](${origin}${item.href}): ${item.note}`).join("\n")}
 `
 }
 
-function notFoundMarkdown(pathname: string): string {
-  return `# 404 — \`${pathname}\` does not resolve
+function notFoundMarkdown(origin: string, pathname: string): string {
+  return `# 404: \`${pathname}\` does not resolve
 
 The route set is closed, the same way the command set is. Nothing here is
 generated from the url, so a path that is not listed below does not exist.
 
 ## Where to look next
 
-- [/](${ORIGIN}/) — the terminal
-- [/llms.txt](${ORIGIN}/llms.txt) — every command, its arguments and its limits
-- [/openapi.json](${ORIGIN}/openapi.json) — OpenAPI 3.1 for the same surface
-- [/mcp](${ORIGIN}/mcp) — MCP server, one tool per command
-- [/.well-known/ai-catalog.json](${ORIGIN}/.well-known/ai-catalog.json) — both surfaces, typed by protocol
-- [/developers](${ORIGIN}/developers) — calling it, the error model, versioning
-- [/sitemap.xml](${ORIGIN}/sitemap.xml) — every indexable page
+- [/](${origin}/): the terminal
+- [/llms.txt](${origin}/llms.txt): every command, its arguments and its limits
+- [/openapi.json](${origin}/openapi.json): OpenAPI 3.1 for the same surface
+- [/mcp](${origin}/mcp): MCP server, one tool per command
+- [/.well-known/ai-catalog.json](${origin}/.well-known/ai-catalog.json): both surfaces, typed by protocol
+- [/developers](${origin}/developers): calling it, the error model, versioning
+- [/sitemap.xml](${origin}/sitemap.xml): every indexable page
 
 ## Commands
 
-Each is \`GET /<command>/<target>\`, for example \`${ORIGIN}/tls/github.com\`.
+Each is \`GET /<command>/<target>\`, for example \`${origin}/tls/github.com\`.
 
 ${COMMANDS.filter((spec) => spec.endpoint)
-  .map((spec) => `- \`/${spec.name.toLowerCase()}/{target}\` — ${spec.summary}`)
+  .map((spec) => `- \`/${spec.name.toLowerCase()}/{target}\`: ${spec.summary}`)
   .join("\n")}
 `
 }
 
-const PAGES: Record<string, () => string> = {
+const PAGES: Record<string, (origin: string) => string> = {
   "/": homeMarkdown,
   "/about": aboutMarkdown,
 }
@@ -345,8 +336,8 @@ const PAGES: Record<string, () => string> = {
 // Every path that renders a page, whether or not it has a markdown form above.
 //
 // The two are not the same set, and conflating them was a real bug: a request
-// for text/markdown fell through to the markdown 404, so /developers — the one
-// page an agent looking for an api is most likely to ask for — answered 404 to
+// for text/markdown fell through to the markdown 404, so /developers (the one
+// page an agent looking for an api is most likely to ask for) answered 404 to
 // any client that preferred markdown, while the same url in a browser was fine.
 // A page with no markdown generator serves its html; only a path that is not a
 // page at all is a 404.
@@ -359,13 +350,13 @@ export function proxy(request: NextRequest) {
 
   // Both spellings of the same api. /tls/github.com is the one llms.txt tells
   // an agent to call and it rewrites to /api/tls, so limiting only the /api
-  // form would leave the documented surface uncounted — which it did, until
+  // form would leave the documented surface uncounted, which it did, until
   // this was measured.
   //
   // /mcp is the same trap in a second place: it rewrites to /api/mcp, and every
   // tool call an agent makes runs a real command through it. Counting only the
   // long spelling would make the quota opt-in. The other short paths added
-  // alongside it — /server.json, the two well-known documents — are static,
+  // alongside it (/server.json, the two well-known documents) are static,
   // cached for a day and cost nothing upstream, so they stay uncounted like
   // /llms.txt and /openapi.json already are.
   // A Server Action is a POST to the page's own url carrying a Next-Action
@@ -459,14 +450,14 @@ export function proxy(request: NextRequest) {
   if (wantsMarkdown(request)) {
     const page = PAGES[pathname]
     if (page) {
-      return markdown(page())
+      return markdown(page(request.nextUrl.origin))
     }
     // A command path is answered by Go in text or json, and a page with no
     // markdown form answers in html. Neither is faked here; only a path that is
     // neither gets the markdown 404, which exists to hand an agent the command
     // list rather than an html error page it cannot read.
     if (!isCommand && !PAGE_PATHS.has(pathname)) {
-      return markdown(notFoundMarkdown(pathname), 404)
+      return markdown(notFoundMarkdown(request.nextUrl.origin, pathname), 404)
     }
     return NextResponse.next()
   }

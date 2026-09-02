@@ -349,7 +349,7 @@ func TestPageListsAgree(t *testing.T) {
 	// two blocks have to be read together to see the whole set.
 	proxy := read(t, root, "proxy.ts")
 	paths := listAfter(t, proxy, "const PAGE_PATHS = new Set([")
-	for path := range listAfter(t, proxy, "const PAGES: Record<string, () => string> = {") {
+	for path := range listAfter(t, proxy, "const PAGES: Record<string, (origin: string) => string> = {") {
 		paths[path] = true
 	}
 

@@ -5,6 +5,7 @@ import { NOT_HERE } from "@/app/commands/grammar"
 import { Frame, FrameRows } from "@/app/screens/frame"
 import { ThemeToggle } from "@/components/theme-provider"
 import { RESOLVERS } from "@/lib/resolvers"
+import { MACHINE_READABLE, READING_A_SCREEN, THE_GUARD } from "@/lib/site-copy"
 
 const ABOUT_DESCRIPTION =
   "How a screen is read, what the address guard refuses, and where the answers come from."
@@ -56,16 +57,7 @@ export default function About() {
 
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
           <Frame title="reading a screen" className="lg:col-span-2">
-            <FrameRows
-              rows={[
-                { label: "the verdict", value: "the answer in one sentence", accent: true },
-                { label: "the blocks", value: "the evidence for it" },
-                { label: "[*] live", value: "answered a moment ago" },
-                { label: "[~] cached", value: "held under its own ttl, age shown" },
-                { label: "degraded", value: "an upstream failed, the rest still answered" },
-                { label: "none", value: "checked and absent, not skipped" },
-              ]}
-            />
+            <FrameRows rows={READING_A_SCREEN} />
           </Frame>
 
           <Frame title="not here">
@@ -82,15 +74,7 @@ export default function About() {
 
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
           <Frame title="the guard" className="lg:col-span-2">
-            <FrameRows
-              rows={[
-                { label: "checked", value: "in the dialer, after the name resolves and before connect", accent: true },
-                { label: "covers", value: "every candidate address, not only the first" },
-                { label: "refuses", value: "private, loopback, link-local, carrier-grade NAT and reserved space" },
-                { label: "ipv4-in-ipv6", value: "judged by the address inside, not the wrapper" },
-                { label: "ports", value: "an allowlist; PORTS waives it and nothing else" },
-              ]}
-            />
+            <FrameRows rows={THE_GUARD} />
           </Frame>
 
           <Frame title="resolvers">
@@ -107,9 +91,9 @@ export default function About() {
 
         <Frame title="machine readable">
           <ul className="grid grid-cols-1 gap-x-16 gap-y-2 sm:grid-cols-3">
-            <AboutLink href="/llms.txt" note="the grammar and the limits" />
-            <AboutLink href="/openapi.json" note="one operation per command" />
-            <AboutLink href="/mcp" note="mcp, one tool per command" />
+            {MACHINE_READABLE.map((item) => (
+              <AboutLink key={item.href} href={item.href} note={item.note} />
+            ))}
           </ul>
         </Frame>
 
