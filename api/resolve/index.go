@@ -4,7 +4,9 @@ package handler
 import (
 	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/zaidmukaddam/dug/pkg/dnsx"
@@ -31,13 +33,19 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	only := strings.ToUpper(strings.TrimSpace(query.Get("type")))
+	if only != "" && !slices.Contains(dnsx.RecordTypes, only) {
+		screen.Fail(w, r, command, target, only+" is not a record type this command knows", "one of "+strings.Join(dnsx.RecordTypes, ", "))
+		return
+	}
+
 	result := screen.New(command, name)
 	resolver := resolvers.ByID(query.Get("resolver"))
 
 	if command == "TTL" {
 		runTTL(r, result, name, resolver)
 	} else {
-		runDig(r, result, name, resolver, query.Get("type"))
+		runDig(r, result, name, resolver, only)
 	}
 	result.Write(w, r)
 }
