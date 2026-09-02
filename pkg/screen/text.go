@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"unicode"
 )
 
 const indent = "  "
@@ -41,28 +42,43 @@ func (p Payload) Text() string {
 		if p.Error.Hint != "" {
 			fmt.Fprintf(&b, "%s%s\n", indent, p.Error.Hint)
 		}
-		return b.String()
-	}
+	} else {
+		fmt.Fprintf(&b, "\n%slive, held %ds · %dms · %d lookups\n",
+			indent, p.TTL, p.ElapsedMS, p.Upstream)
 
-	fmt.Fprintf(&b, "\n%slive, held %ds · %dms · %d lookups\n",
-		indent, p.TTL, p.ElapsedMS, p.Upstream)
-
-	for _, block := range p.Blocks {
-		body := blockText(block)
-		if body == "" {
-			continue
+		for _, block := range p.Blocks {
+			body := blockText(block)
+			if body == "" {
+				continue
+			}
+			fmt.Fprintf(&b, "\n[ %s ]\n\n%s", strings.ToUpper(blockTitle(block)), body)
 		}
-		fmt.Fprintf(&b, "\n[ %s ]\n\n%s", strings.ToUpper(blockTitle(block)), body)
-	}
 
-	if len(p.Notes) > 0 {
-		b.WriteString("\n[ NOTES ]\n\n")
-		for _, note := range p.Notes {
-			fmt.Fprintf(&b, "%s%s\n", indent, note)
+		if len(p.Notes) > 0 {
+			b.WriteString("\n[ NOTES ]\n\n")
+			for _, note := range p.Notes {
+				fmt.Fprintf(&b, "%s%s\n", indent, note)
+			}
 		}
 	}
 
-	return b.String()
+	return printable(b.String())
+}
+
+// printable drops every control character except the two the layout uses.
+// Titles, descriptions and txt records are someone else's bytes, and the text
+// form is printed to terminals and handed to models: an escape sequence in a
+// page title must not rewrite either.
+func printable(s string) string {
+	return strings.Map(func(r rune) rune {
+		if r == '\n' || r == '\t' {
+			return r
+		}
+		if unicode.IsControl(r) {
+			return -1
+		}
+		return r
+	}, s)
 }
 
 // blockTitle reads the title off whichever prop struct this is. Every prop type
