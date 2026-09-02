@@ -92,7 +92,7 @@ pnpm dev
 | `pnpm typecheck` | `tsc --noEmit` |
 | `pnpm vet` | `go vet`, and `gofmt` that fails on an unformatted file |
 | `pnpm verify` | Everything CI runs: typecheck, lint, vet, offline tests, build |
-| `node scripts/shoot.mjs "TLS github.com"` | Screenshot a screen, `THEME=dark` for dark |
+| `node scripts/shoot.mjs "TLS github.com"` | Screenshot a screen, `THEME=dark` for dark; one-time `pnpm exec playwright install chromium` first |
 
 Biome lints and Prettier formats; its Tailwind plugin sorts the class lists.
 

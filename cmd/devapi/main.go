@@ -34,7 +34,7 @@ import (
 )
 
 func main() {
-	port := os.Getenv("PORT")
+	port := os.Getenv("DUG_API_PORT")
 	if port == "" {
 		port = "8787"
 	}
@@ -72,5 +72,7 @@ func main() {
 	}
 
 	log.Printf("api on http://127.0.0.1:%s with %d routes", port, len(routes))
-	log.Fatal(http.ListenAndServe("127.0.0.1:"+port, mux))
+	if err := http.ListenAndServe("127.0.0.1:"+port, mux); err != nil {
+		log.Fatalf("api could not listen on %s (set DUG_API_PORT to move it): %v", port, err)
+	}
 }

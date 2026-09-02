@@ -10,7 +10,7 @@
 import { chromium } from "playwright"
 
 const out = process.env.SHOT_DIR ?? "/tmp"
-const base = process.env.BASE ?? "http://localhost:3111"
+const base = process.env.BASE ?? "http://localhost:3000"
 const commands = process.argv.slice(2)
 
 const browser = await chromium.launch()
