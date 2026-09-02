@@ -63,9 +63,14 @@ function GraphGantt({
   return (
     <Graph title={title} className={className} corner={corner}>
       <GraphBody className="flex flex-col gap-4">
+        {/* Label beside the track from sm up. Below it the label stacks on
+            top: a phone leaves the track about 170px, 24 one-character ticks
+            need 200, and the bar walked out of the frame while the year ticks
+            ran together. Stacked, the track gets the full body width and the
+            label no longer needs truncating. */}
         {playhead != null ? (
-          <div className="grid grid-cols-[7rem_minmax(0,1fr)] gap-x-4">
-            <span />
+          <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-[7rem_minmax(0,1fr)]">
+            <span className="max-sm:hidden" />
             <GraphTrack>
               {Array.from({ length: columns }, (_, index) => (
                 <GraphTick
@@ -110,7 +115,7 @@ function GraphGantt({
                     ? `, ${Math.round(entry.complete * 100)}% complete`
                     : ""
                 }`}
-                className="grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-x-4"
+                className="grid grid-cols-1 items-center gap-x-4 sm:grid-cols-[7rem_minmax(0,1fr)]"
                 // Keyed by position: a TLS chain with two intermediates gives
                 // two items the same label, which is a correct payload.
                 key={index}
@@ -154,8 +159,8 @@ function GraphGantt({
           })}
         </motion.ul>
         {ticks && ticks.length > 0 ? (
-          <div className="grid grid-cols-[7rem_minmax(0,1fr)] gap-x-4">
-            <span />
+          <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-[7rem_minmax(0,1fr)]">
+            <span className="max-sm:hidden" />
             <div className="flex justify-between text-graph-muted">
               {ticks.map((tick, index) => (
                 <span key={index}>{tick}</span>

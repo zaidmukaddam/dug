@@ -40,7 +40,7 @@ function RuleY() {
   return (
     <span
       aria-hidden="true"
-      className="pointer-events-none absolute inset-y-0 left-0 graph-rule-y"
+      className="pointer-events-none absolute inset-y-0 left-0 graph-rule-y @max-md:hidden"
     />
   )
 }
@@ -59,10 +59,17 @@ function GraphSheet({
   const list = staggerList(reduce, 0.04)
   const columns = headers.length
 
+  // Two layouts, chosen by the sheet's own width. From @md the table is a
+  // table: label beside value, values right-aligned so numbers line up. Below
+  // it every cell is a block, label above value, and the value has the whole
+  // width. Measured on a 375px phone: the label column sat at its content
+  // width and still left 22 characters for a 24-character date, which
+  // wrapped as "2021-03-22 to 2036-03-" / "21" and read as two values.
   function cellClass(index: number, extra?: string) {
     return cn(
-      "relative px-3 py-2.5",
-      side(align, index) === "right" ? "text-right tabular-nums" : "text-left",
+      "relative px-3 py-2.5 text-left @max-md:block @max-md:px-0 @max-md:py-0.5",
+      index === 0 && "@max-md:pt-3 @max-md:text-graph-muted",
+      side(align, index) === "right" && "tabular-nums @md:text-right",
       extra
     )
   }
@@ -73,15 +80,14 @@ function GraphSheet({
         <div className="@container graph-scroll-x">
           <table className="w-full min-w-lg border-separate border-spacing-0">
             <thead>
-              <tr>
+              {/* Column headers name columns, and stacked cells have none. */}
+              <tr className="@max-md:hidden">
                 {headers.map((header, index) => (
                   <th
                     key={index}
                     className={cn(
-                      "relative px-3 pb-3 font-normal whitespace-nowrap text-foreground",
-                      side(align, index) === "right"
-                        ? "text-right"
-                        : "text-left"
+                      "relative px-3 pb-3 text-left font-normal whitespace-nowrap text-foreground",
+                      side(align, index) === "right" && "@md:text-right"
                     )}
                   >
                     {index > 0 ? <RuleY /> : null}

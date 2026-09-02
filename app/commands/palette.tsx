@@ -33,6 +33,10 @@ export type PaletteProps = {
   agentTools: number
   history: string[]
   placeholder: string
+  // What the empty prompt shows on a screen too narrow for the full sentence.
+  // A phone fits about thirty characters of the prompt's type, and a
+  // placeholder cut off mid-word reads as a bug, not a hint.
+  placeholderNarrow: string
 }
 
 function specFor(value: string): CommandSpec | null {
@@ -88,6 +92,7 @@ export function Palette({
   agentTools,
   history,
   placeholder,
+  placeholderNarrow,
 }: PaletteProps) {
   const completion = running ? "" : completionFor(value, history)
   const spec = specFor(value)
@@ -120,8 +125,18 @@ export function Palette({
               aria-hidden="true"
               className="pointer-events-none col-start-1 row-start-1 overflow-hidden font-mono text-base whitespace-pre sm:text-lg"
             >
-              {/* Zero width space keeps a baseline when the input is empty. */}
-              <span className="invisible">{value || "​"}</span>
+              {/* The placeholder is drawn here, not by the input, because an
+                  attribute cannot change with the viewport and the ghost can.
+                  The input keeps its own placeholder for assistive tech and
+                  hides it. */}
+              {value ? (
+                <span className="invisible">{value}</span>
+              ) : (
+                <span className="text-muted-foreground">
+                  <span className="sm:hidden">{placeholderNarrow}</span>
+                  <span className="max-sm:hidden">{placeholder}</span>
+                </span>
+              )}
               <span className="text-muted-foreground/70">{completion}</span>
             </div>
 
@@ -141,7 +156,7 @@ export function Palette({
               aria-label="command"
               aria-describedby="command-hint"
               placeholder={value ? undefined : placeholder}
-              className="col-start-1 row-start-1 w-full bg-transparent font-mono text-base outline-none placeholder:text-muted-foreground sm:text-lg"
+              className="col-start-1 row-start-1 w-full bg-transparent font-mono text-base outline-none placeholder:text-transparent sm:text-lg"
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
                   event.preventDefault()
@@ -199,12 +214,19 @@ export function Palette({
           </>
         ) : (
           <>
-            <span className="tabular-nums">{COMMANDS.length}</span> commands · tab completes
-            {/* History is per page load, like the cache, so on a fresh page the
-                arrows do nothing. Claiming otherwise makes a working feature
-                look broken the one time most people try it. */}
-            {history.length > 0 ? " · up and down walk history" : null}
-            {clearable ? " · esc clears the screen" : null}
+            <span className="tabular-nums">{COMMANDS.length}</span> commands
+            {/* Key hints only where there are keys. A phone has no tab, no
+                arrows and no escape, and on a 375px screen these three took
+                two of the hint's five lines. pointer-coarse is the closest
+                signal the platform offers for "no physical keyboard". */}
+            <span className="pointer-coarse:hidden">
+              {" · tab completes"}
+              {/* History is per page load, like the cache, so on a fresh page
+                  the arrows do nothing. Claiming otherwise makes a working
+                  feature look broken the one time most people try it. */}
+              {history.length > 0 ? " · up and down walk history" : null}
+              {clearable ? " · esc clears the screen" : null}
+            </span>
             {/* What is on the page for an agent, said where a person will see
                 it. Deliberately "available to" and not "an agent is here": the
                 tools are registered either way, and only the first is known. */}

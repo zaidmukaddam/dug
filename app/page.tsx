@@ -110,6 +110,10 @@ async function perform(step: Lookup): Promise<Outcome> {
 }
 
 const PLACEHOLDER = "try TLS example.com, HELP, or ask in plain words"
+// About thirty characters is what a phone shows of the prompt before the
+// frame cuts it off, so the narrow form keeps the command and the invitation
+// and drops the rest.
+const PLACEHOLDER_NARROW = "try TLS example.com, or ask"
 
 const VERBS = new Set<string>(COMMANDS.map((spec) => spec.name))
 
@@ -398,6 +402,7 @@ export default function Page() {
           running={status === "running"}
           history={history}
           placeholder={PLACEHOLDER}
+          placeholderNarrow={PLACEHOLDER_NARROW}
         />
 
         {/* Errors sit directly under the input that produced them. */}

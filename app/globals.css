@@ -194,8 +194,14 @@
    Everything stays visible without a scrollbar. The cost is that a wrapped cell
    is taller than its neighbours, which the character grid tolerates because
    rows are separated by rules rather than by alignment alone. */
+/* overflow-y: clip, not the auto that overflow-x alone would imply. The rows
+   enter with a translateY, and for the length of that animation the body is
+   taller than its box, which auto answers with a vertical scrollbar that
+   appears and vanishes on every screen. clip has no scroll container to
+   flash. */
 @utility graph-scroll-x {
     overflow-x: auto;
+    overflow-y: clip;
     overscroll-behavior-x: contain;
     scrollbar-width: thin;
 }
