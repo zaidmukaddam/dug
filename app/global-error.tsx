@@ -20,10 +20,10 @@ export default function GlobalError({
 
   return (
     <html lang="en">
-      <body style={{ margin: 0, background: "#0a0a0a", color: "#ededed" }}>
+      <body style={{ margin: 0, background: "#191613", color: "#f3ede4" }}>
         {/* Only the two colours change with the scheme, so a media query beats
             shipping a theme system into the failure path. */}
-        <style>{`@media (prefers-color-scheme: light){body{background:#fff!important;color:#171717!important}}`}</style>
+        <style>{`@media (prefers-color-scheme: light){body{background:#faf7f1!important;color:#1f1b16!important}}`}</style>
 
         <main
           style={{

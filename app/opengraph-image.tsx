@@ -21,11 +21,11 @@ export const contentType = "image/png"
 // The dark palette, resolved. Satori does not run the cascade, so the oklch
 // custom properties in globals.css are of no use here and these are their
 // sRGB equivalents.
-const BACKGROUND = "#0a0a0a"
-const FOREGROUND = "#fafafa"
-const MUTED = "#8a8a8a"
-const ACCENT = "#84a9f0"
-const RULE = "#3d3d3d"
+const BACKGROUND = "#191613"
+const FOREGROUND = "#f3ede4"
+const MUTED = "#8a8378"
+const ACCENT = "#e8a24a"
+const RULE = "#4a443c"
 
 export default async function Image() {
   // Vendored next to the app rather than fetched: this route is prerendered at
