@@ -337,6 +337,15 @@ func percentText(value float64, caption string) string {
 	return fmt.Sprintf("%s%s\n", indent, line)
 }
 
+// pad right-pads to a column measured in runes. %-*s pads by bytes, which put
+// every idn and every · one column out.
+func pad(s string, columns int) string {
+	if extra := columns - width(s); extra > 0 {
+		return s + strings.Repeat(" ", extra)
+	}
+	return s
+}
+
 // pairText lays label and value out as two aligned columns.
 func pairText(pairs [][2]string) string {
 	widest := 0
@@ -346,7 +355,7 @@ func pairText(pairs [][2]string) string {
 
 	var b strings.Builder
 	for _, pair := range pairs {
-		fmt.Fprintf(&b, "%s%-*s  %s\n", indent, widest, pair[0], pair[1])
+		fmt.Fprintf(&b, "%s%s  %s\n", indent, pad(pair[0], widest), pair[1])
 	}
 	return b.String()
 }
@@ -385,7 +394,7 @@ func tableText(headers []string, rows [][]string) string {
 				parts = append(parts, cell)
 				continue
 			}
-			parts = append(parts, fmt.Sprintf("%-*s", widths[i], cell))
+			parts = append(parts, pad(cell, widths[i]))
 		}
 		b.WriteString(strings.TrimRight(strings.Join(parts, "  "), " "))
 		b.WriteString("\n")
