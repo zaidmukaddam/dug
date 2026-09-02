@@ -13,7 +13,6 @@ import (
 	catalogapi "github.com/zaidmukaddam/dug/api/catalog"
 	delegateapi "github.com/zaidmukaddam/dug/api/delegate"
 	fetchapi "github.com/zaidmukaddam/dug/api/fetch"
-	guardapi "github.com/zaidmukaddam/dug/api/guard"
 	llmsapi "github.com/zaidmukaddam/dug/api/llms"
 	mailapi "github.com/zaidmukaddam/dug/api/mail"
 	mcpapi "github.com/zaidmukaddam/dug/api/mcp"
@@ -46,7 +45,6 @@ func main() {
 		"/api/catalog":    catalogapi.Handler,
 		"/api/delegate":   delegateapi.Handler,
 		"/api/fetch":      fetchapi.Handler,
-		"/api/guard":      guardapi.Handler,
 		"/api/llms":       llmsapi.Handler,
 		"/api/mail":       mailapi.Handler,
 		"/api/mcp":        mcpapi.Handler,

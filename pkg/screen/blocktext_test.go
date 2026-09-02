@@ -148,12 +148,6 @@ func TestBlockText(t *testing.T) {
 			block: Block{Component: "GraphWaffle", Props: WaffleProps{Title: "waffle", Value: 0.5, Caption: "half"}},
 		},
 		{
-			name: "StackProps",
-			block: Block{Component: "GraphStack", Props: StackProps{Title: "stack", Rows: []StackRow{
-				{Label: "row", Segments: []StackSegment{{Label: "seg", Value: 1}}},
-			}}},
-		},
-		{
 			// Real gap, not a documented exception: same as PlotProps above.
 			name: "CellsProps",
 			block: Block{Component: "GraphCells", Props: CellsProps{Title: "cells", Items: []CellGrid{

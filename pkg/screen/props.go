@@ -299,21 +299,6 @@ type WaffleProps struct {
 	Caption string  `json:"caption,omitempty"`
 }
 
-type StackSegment struct {
-	Label string `json:"label"`
-	Value int    `json:"value"`
-}
-
-type StackRow struct {
-	Label    string         `json:"label"`
-	Segments []StackSegment `json:"segments"`
-}
-
-type StackProps struct {
-	Title string     `json:"title"`
-	Rows  []StackRow `json:"rows"`
-}
-
 type CellGrid struct {
 	Label string  `json:"label"`
 	Cells [][]int `json:"cells"`

@@ -47,7 +47,6 @@ const API_ENDPOINTS = new Set([
   "/api/llms",
   "/api/openapi",
   "/api/mcp",
-  "/api/guard",
   "/api/catalog",
   "/api/aicatalog",
   "/api/server",

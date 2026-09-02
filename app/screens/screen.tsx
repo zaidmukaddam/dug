@@ -25,7 +25,6 @@ import { GraphSheet } from "@/components/graph-sheet"
 import { GraphSlope } from "@/components/graph-slope"
 import { GraphSpark } from "@/components/graph-spark"
 import { GraphSpec } from "@/components/graph-spec"
-import { GraphStack } from "@/components/graph-stack"
 import { GraphStat } from "@/components/graph-stat"
 import { GraphTable } from "@/components/graph-table"
 import { GraphTimeline } from "@/components/graph-timeline"
@@ -61,7 +60,6 @@ const REGISTRY = {
   GraphSlope,
   GraphSpark,
   GraphSpec,
-  GraphStack,
   GraphStat,
   GraphTable,
   GraphTimeline,
@@ -90,7 +88,6 @@ const MIN_SPAN: Record<string, number> = {
   GraphSheet: 2,
   GraphMatrix: 2,
   GraphCompare: 2,
-  GraphInvoice: 2,
   GraphBullet: 2,
   GraphRank: 2,
   GraphFunnel: 2,
