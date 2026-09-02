@@ -108,4 +108,14 @@ export const INVESTIGATIONS: Investigation[] = [
     question: "can an agent read and understand this site",
     steps: (target) => [`SEO ${target}`, `AEO ${target}`, `WEBMCP ${target}`, `OG ${target}`],
   },
+  {
+    id: "down",
+    question: "is this site down for everyone or only for me",
+    steps: (target) => [`HTTP ${target}`, `PING ${target}`, `TLS ${target}`, `PROP ${target}`],
+  },
+  {
+    id: "domain",
+    question: "is this domain’s registration and delegation healthy",
+    steps: (target) => [`RDAP ${target}`, `NS ${target}`, `DNSSEC ${target}`, `TTL ${target}`],
+  },
 ]

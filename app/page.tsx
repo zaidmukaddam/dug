@@ -570,6 +570,8 @@ const SAMPLE: Record<string, string> = {
   tls: "stripe.com",
   reachability: "cloudflare.com",
   agents: "vercel.com",
+  down: "github.com",
+  domain: "cloudflare.com",
 }
 
 // Built out of the same dashed frames an answer is, so the first thing on
