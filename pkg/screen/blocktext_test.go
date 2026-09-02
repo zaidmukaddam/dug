@@ -7,13 +7,9 @@ import "testing"
 // out of the switch silently prints nothing for curl. This table is the
 // guard: add a props type, add it here, or the assertion catches the gap.
 //
-// Four types render empty today even with a populated field, because
-// blockText's switch has no case for them at all (unlike GanttProps, which
-// is a documented, deliberate omission in text.go): PlotProps, SparkProps,
-// BarsProps, CellsProps. They are marked wantEmpty below with a comment
-// rather than silently skipped, per the plan. This is a real, pre-existing
-// gap — reported in the executor's final report, not fixed here (out of
-// scope for this plan).
+// GanttProps is the one documented exception, marked wantEmpty with a
+// comment next to its case in text.go: starts and ends are fractions of the
+// chart's own span, not dates, so text could only repeat the labels.
 func TestBlockText(t *testing.T) {
 	for _, test := range []struct {
 		name      string
@@ -117,27 +113,19 @@ func TestBlockText(t *testing.T) {
 			block: Block{Component: "GraphWaterfall", Props: WaterfallProps{Title: "waterfall", Items: []WaterfallItem{{Label: "item", Value: 1}}}},
 		},
 		{
-			// Real gap, not a documented exception: blockText's type switch has
-			// no case for PlotProps at all, so it falls through to the final
-			// `return ""`. Reported, not fixed here (out of scope for this plan).
-			name:      "PlotProps",
-			block:     Block{Component: "GraphPlot", Props: PlotProps{Title: "plot", Data: []int{1, 2, 3}}},
-			wantEmpty: true,
+			name:  "PlotProps",
+			block: Block{Component: "GraphPlot", Props: PlotProps{Title: "plot", Data: []int{1, 2, 3}}},
 		},
 		{
-			// Real gap, not a documented exception: same as PlotProps above.
-			name:      "SparkProps",
-			block:     Block{Component: "GraphSpark", Props: SparkProps{Title: "spark", Data: []int{1, 2, 3}, Caption: "trend"}},
-			wantEmpty: true,
+			name:  "SparkProps",
+			block: Block{Component: "GraphSpark", Props: SparkProps{Title: "spark", Data: []int{1, 2, 3}, Caption: "trend"}},
 		},
 		{
-			// Real gap, not a documented exception: same as PlotProps above.
 			name: "BarsProps",
 			block: Block{Component: "GraphBars", Props: BarsProps{Title: "bars",
 				From: BarSeries{Label: "from", Values: []int{1}},
 				To:   BarSeries{Label: "to", Values: []int{2}},
 			}},
-			wantEmpty: true,
 		},
 		{
 			name:  "MeterProps",
@@ -148,12 +136,10 @@ func TestBlockText(t *testing.T) {
 			block: Block{Component: "GraphWaffle", Props: WaffleProps{Title: "waffle", Value: 0.5, Caption: "half"}},
 		},
 		{
-			// Real gap, not a documented exception: same as PlotProps above.
 			name: "CellsProps",
 			block: Block{Component: "GraphCells", Props: CellsProps{Title: "cells", Items: []CellGrid{
 				{Label: "grid", Cells: [][]int{{1}}},
 			}}},
-			wantEmpty: true,
 		},
 		{
 			// TimerProps renders only its caption; an empty caption is itself an
