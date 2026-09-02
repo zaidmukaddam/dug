@@ -121,7 +121,9 @@ function GraphStack({
                 aria-label={`${row.label}: ${row.segments
                   .map((segment) => `${segment.label} ${segment.value}`)
                   .join(", ")}`}
-                className="grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-x-4"
+                // Label beside the track from sm up, above it on a phone, for
+                // the same reason as the gantt: 24 ticks need the full width.
+                className="grid grid-cols-1 items-center gap-x-4 sm:grid-cols-[7rem_minmax(0,1fr)]"
                 key={rowIndex}
                 variants={item}
               >

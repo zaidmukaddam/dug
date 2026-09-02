@@ -105,11 +105,17 @@ function GraphBullet({
             return (
               <motion.li
                 aria-label={`${entry.label} ${formatItem(entry)}`}
-                className="grid grid-cols-[7rem_minmax(0,1fr)_7rem] items-center gap-x-4"
+                // Three columns from sm up. Below it the label takes a row of
+                // its own and the value column shrinks to its content: two
+                // fixed 7rem columns left a 20-tick track 39px on a phone,
+                // and the bar ran under the value.
+                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 sm:grid-cols-[7rem_minmax(0,1fr)_7rem]"
                 key={index}
                 variants={item}
               >
-                <span className="truncate text-foreground">{entry.label}</span>
+                <span className="col-span-2 truncate text-foreground sm:col-span-1">
+                  {entry.label}
+                </span>
                 <span className="flex min-w-0 items-center">
                   <span aria-hidden="true" className="text-graph-frame">
                     [

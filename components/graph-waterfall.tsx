@@ -154,10 +154,12 @@ function GraphWaterfall({
               <li className="flex flex-col gap-2" key={index}>
                 {showRule ? <GraphRule /> : null}
                 <motion.div
-                  className="grid grid-cols-[7rem_minmax(0,1fr)_5.5rem] items-center gap-x-4"
+                  // Same phone layout as the bullet: label on its own row,
+                  // value sized to its content, so 24 ticks keep their width.
+                  className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 sm:grid-cols-[7rem_minmax(0,1fr)_5.5rem]"
                   variants={item}
                 >
-                  <span className="truncate text-foreground">
+                  <span className="col-span-2 truncate text-foreground sm:col-span-1">
                     {segment.label}
                   </span>
                   <GraphTrack>

@@ -84,11 +84,15 @@ function GraphRank({
             return (
               <motion.li
                 aria-label={`${entry.label} ${shown}`}
-                className="grid grid-cols-[7rem_minmax(0,1fr)_7rem] items-center gap-x-4"
+                // Same phone layout as the bullet: label on its own row, value
+                // sized to its content, so the track keeps its width.
+                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 sm:grid-cols-[7rem_minmax(0,1fr)_7rem]"
                 key={index}
                 variants={item}
               >
-                <span className="truncate text-foreground">{entry.label}</span>
+                <span className="col-span-2 truncate text-foreground sm:col-span-1">
+                  {entry.label}
+                </span>
                 <span className="flex min-w-0 items-center">
                   <span
                     aria-hidden="true"

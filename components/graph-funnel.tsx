@@ -72,12 +72,16 @@ function GraphFunnel({
 
             return (
               <motion.li
-                className="grid grid-cols-[7rem_minmax(0,1fr)_8ch_4ch] items-center gap-x-4"
+                // Same phone layout as the bullet: label on its own row, the
+                // two value columns sized to their content.
+                className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-4 sm:grid-cols-[7rem_minmax(0,1fr)_8ch_4ch]"
                 key={index}
                 style={seriesDim(palette, !dim)}
                 variants={item}
               >
-                <span className="truncate text-foreground">{step.label}</span>
+                <span className="col-span-3 truncate text-foreground sm:col-span-1">
+                  {step.label}
+                </span>
                 <GraphTrack>
                   {Array.from({ length: ticks }, (_, cell) => {
                     const filled = cell < width
