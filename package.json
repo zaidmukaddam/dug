@@ -14,9 +14,10 @@
     "lint:fix": "biome lint --write .",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
-    "test:api": "go test ./pkg/... ./api/...",
+    "test:api": "go test -short ./pkg/... ./api/... ./cmd/...",
     "test:live": "go test ./pkg/... -run 'Live|Spread|Traceroute|Expired' -v",
-    "vet": "go vet ./... && gofmt -l api pkg cmd"
+    "vet": "go vet ./... && test -z \"$(gofmt -l api pkg cmd)\"",
+    "verify": "pnpm typecheck && pnpm lint && pnpm vet && pnpm test:api && pnpm build"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.52",
