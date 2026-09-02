@@ -385,17 +385,27 @@ const RECORD_TYPES = ["A", "AAAA", "CNAME", "MX", "TXT", "NS", "SOA", "CAA", "DS
 //
 // A word that strips to nothing is returned unchanged, so `HTTP /a/b` still
 // fails with the word it was given rather than with "needs an argument".
-function hostFrom(word: string, kind: ArgumentKind): string {
+export function hostFrom(word: string, kind: ArgumentKind): string {
   const withoutScheme = word.replace(/^[a-z][a-z0-9+.-]*:\/\//i, "")
 
   if (kind === "cidr") {
     return withoutScheme || word
   }
 
-  const host = withoutScheme
-    .replace(/[/?#].*$/, "")
-    .replace(/^.*@/, "")
-    .replace(/:\d*$/, "")
+  const authority = withoutScheme.replace(/[/?#].*$/, "").replace(/^.*@/, "")
+
+  // A bracketed host is an ipv6 address with an optional port after the
+  // bracket. Unwrapping it is the whole of port handling for that form.
+  const bracketed = /^\[([^\]]+)\](?::\d*)?$/.exec(authority)
+  if (bracketed) {
+    return bracketed[1] || word
+  }
+
+  // A bare ipv6 address has more than one colon and no port can follow it
+  // unbracketed, so it is left whole. Everything else may end in :port, and
+  // an ipv6 address ends in :hextet, which the old strip cut off.
+  const colons = authority.split(":").length - 1
+  const host = colons > 1 ? authority : authority.replace(/:\d*$/, "")
 
   return host || word
 }

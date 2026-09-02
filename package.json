@@ -16,8 +16,9 @@
     "typecheck": "tsc --noEmit",
     "test:api": "go test -short ./pkg/... ./api/... ./cmd/...",
     "test:live": "go test ./pkg/... -run 'Live|Spread|Traceroute|Expired' -v",
+    "test:web": "node --test 'app/**/*.test.ts' 'lib/**/*.test.ts'",
     "vet": "go vet ./... && test -z \"$(gofmt -l api pkg cmd)\"",
-    "verify": "pnpm typecheck && pnpm lint && pnpm vet && pnpm test:api && pnpm build"
+    "verify": "pnpm typecheck && pnpm lint && pnpm vet && pnpm test:api && pnpm test:web && pnpm build"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.52",
