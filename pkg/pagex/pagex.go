@@ -27,6 +27,7 @@ import (
 	"golang.org/x/net/html"
 
 	"github.com/zaidmukaddam/dug/pkg/httpx"
+	"github.com/zaidmukaddam/dug/pkg/screen"
 )
 
 // Page is a single fetched document, reduced to what is worth reporting.
@@ -57,6 +58,22 @@ type Page struct {
 	Images    int
 	ImagesAlt int
 	Links     int
+}
+
+// NoPage records a page that could not be read, as SEO, AEO and OG all do
+// before their own analysis. It reports whether the caller should stop.
+func NoPage(result *screen.Result, name, origin string, page *Page) bool {
+	if page.Err == "" {
+		return false
+	}
+	result.Degrade("http", page.Err)
+	result.SetVerdict("warn", name+" did not serve a page to read", page.Err)
+	result.Add("GraphSpec", screen.SpecProps{Title: "request", Rows: []screen.SpecRow{
+		{Label: "url", Value: origin + "/", Accent: true},
+		{Label: "result", Value: "no page"},
+		{Label: "reason", Value: page.Err},
+	}}, 3)
+	return true
 }
 
 // Fetch reads one url and reduces it. A non-html answer still returns a Page

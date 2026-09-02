@@ -177,7 +177,7 @@ func runMail(r *http.Request, result *screen.Result, name string) {
 	}, 1)
 
 	result.Add("GraphSpec", screen.SpecProps{Title: "dmarc", Rows: []screen.SpecRow{
-		{Label: "policy", Value: orNone(policy), Accent: true},
+		{Label: "policy", Value: screen.OrNone(policy), Accent: true},
 		{Label: "subdomain policy", Value: valueOr(dmarc, "sp", "inherits the policy above")},
 		{Label: "percentage", Value: valueOr(dmarc, "pct", "100")},
 		{Label: "spf alignment", Value: alignment(hasDMARC, aspf)},
@@ -396,13 +396,6 @@ func step(ok bool, value int) int {
 		return value
 	}
 	return 0
-}
-
-func orNone(value string) string {
-	if value == "" {
-		return "none"
-	}
-	return value
 }
 
 func valueOr(tags map[string]string, key, fallback string) string {

@@ -56,14 +56,7 @@ func run(r *http.Request, result *screen.Result, name string) {
 	result.Spend(4)
 	result.HoldTTL(0, "http")
 
-	if page.Err != "" {
-		result.Degrade("http", page.Err)
-		result.SetVerdict("warn", name+" did not serve a page to read", page.Err)
-		result.Add("GraphSpec", screen.SpecProps{Title: "request", Rows: []screen.SpecRow{
-			{Label: "url", Value: origin + "/", Accent: true},
-			{Label: "result", Value: "no page"},
-			{Label: "reason", Value: page.Err},
-		}}, 3)
+	if pagex.NoPage(result, name, origin, page) {
 		return
 	}
 
@@ -132,7 +125,7 @@ func run(r *http.Request, result *screen.Result, name string) {
 			{Label: "declared", Value: trim(rawImage, 60), Accent: true},
 			{Label: "resolved", Value: trim(img.URL, 60)},
 			{Label: "status", Value: statusLine(img)},
-			{Label: "type", Value: orNone(img.Type)},
+			{Label: "type", Value: screen.OrNone(img.Type)},
 			{Label: "size", Value: kb(img.Bytes)},
 			{Label: "dimensions", Value: dimensions(img)},
 			{Label: "aspect", Value: ratio(img)},
@@ -152,7 +145,7 @@ func run(r *http.Request, result *screen.Result, name string) {
 	for _, key := range []string{"title", "type", "url", "image", "description", "site_name", "locale"} {
 		tags = append(tags, screen.SpecRow{
 			Label:  "og:" + key,
-			Value:  orNone(trim(og[key], 60)),
+			Value:  screen.OrNone(trim(og[key], 60)),
 			Accent: key == "title",
 		})
 	}
@@ -169,7 +162,7 @@ func run(r *http.Request, result *screen.Result, name string) {
 		}
 		twitter = append(twitter, screen.SpecRow{
 			Label:  "twitter:" + key,
-			Value:  orNone(trim(value, 50)) + note,
+			Value:  screen.OrNone(trim(value, 50)) + note,
 			Accent: key == "card",
 		})
 	}
@@ -299,13 +292,6 @@ func trim(value string, limit int) string {
 		return value
 	}
 	return string(runes[:limit]) + "…"
-}
-
-func orNone(value string) string {
-	if value == "" {
-		return "none"
-	}
-	return value
 }
 
 func itoa(n int) string { return strconv.Itoa(n) }

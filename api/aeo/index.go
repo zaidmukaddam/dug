@@ -55,14 +55,7 @@ func run(r *http.Request, result *screen.Result, name string) {
 	result.Spend(4)
 	result.HoldTTL(0, "http")
 
-	if page.Err != "" {
-		result.Degrade("http", page.Err)
-		result.SetVerdict("warn", name+" did not serve a page to read", page.Err)
-		result.Add("GraphSpec", screen.SpecProps{Title: "request", Rows: []screen.SpecRow{
-			{Label: "url", Value: origin + "/", Accent: true},
-			{Label: "result", Value: "no page"},
-			{Label: "reason", Value: page.Err},
-		}}, 3)
+	if pagex.NoPage(result, name, origin, page) {
 		return
 	}
 
@@ -143,17 +136,17 @@ func run(r *http.Request, result *screen.Result, name string) {
 
 	result.Add("GraphSpec", screen.SpecProps{Title: "negotiation", Rows: []screen.SpecRow{
 		{Label: "accept", Value: "text/markdown", Accent: true},
-		{Label: "answered", Value: orNone(markdownType)},
-		{Label: "vary", Value: orNone(markdownVary)},
+		{Label: "answered", Value: screen.OrNone(markdownType)},
+		{Label: "vary", Value: screen.OrNone(markdownVary)},
 		{Label: "cache safe", Value: varySafe(markdownVary, markdownOK)},
 	}}, 1)
 
 	result.Add("GraphSpec", screen.SpecProps{Title: "shape", Rows: []screen.SpecRow{
-		{Label: "title", Value: orNone(trim(page.Title, 60)), Accent: true},
-		{Label: "h1", Value: orNone(trim(page.FirstH1, 60))},
+		{Label: "title", Value: screen.OrNone(trim(page.Title, 60)), Accent: true},
+		{Label: "h1", Value: screen.OrNone(trim(page.FirstH1, 60))},
 		{Label: "headings", Value: headingLine(page)},
-		{Label: "lang", Value: orNone(page.Lang)},
-		{Label: "canonical", Value: orNone(page.Canonical)},
+		{Label: "lang", Value: screen.OrNone(page.Lang)},
+		{Label: "canonical", Value: screen.OrNone(page.Canonical)},
 	}}, 2)
 
 	if len(page.JSONLDType) > 0 {
@@ -212,7 +205,7 @@ func probeRow(probe pagex.Probe) string {
 	if !probe.Found {
 		return "http " + itoa(probe.Status)
 	}
-	return itoa(probe.Bytes) + " bytes, " + orNone(probe.Type)
+	return itoa(probe.Bytes) + " bytes, " + screen.OrNone(probe.Type)
 }
 
 func found(probe pagex.Probe) string {
@@ -235,13 +228,6 @@ func trim(value string, limit int) string {
 		return value
 	}
 	return string(runes[:limit]) + "…"
-}
-
-func orNone(value string) string {
-	if value == "" {
-		return "none"
-	}
-	return value
 }
 
 func itoa(n int) string { return strconv.Itoa(n) }
