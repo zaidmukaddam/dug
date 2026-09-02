@@ -16,6 +16,7 @@
     "typecheck": "tsc --noEmit",
     "test:api": "go test ./pkg/... ./api/...",
     "test:live": "go test ./pkg/... -run 'Live|Spread|Traceroute|Expired' -v",
+    "test:web": "node --test 'app/**/*.test.ts' 'lib/**/*.test.ts'",
     "vet": "go vet ./... && gofmt -l api pkg cmd"
   },
   "dependencies": {

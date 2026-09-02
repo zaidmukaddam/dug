@@ -385,7 +385,7 @@ const RECORD_TYPES = ["A", "AAAA", "CNAME", "MX", "TXT", "NS", "SOA", "CAA", "DS
 //
 // A word that strips to nothing is returned unchanged, so `HTTP /a/b` still
 // fails with the word it was given rather than with "needs an argument".
-function hostFrom(word: string, kind: ArgumentKind): string {
+export function hostFrom(word: string, kind: ArgumentKind): string {
   const withoutScheme = word.replace(/^[a-z][a-z0-9+.-]*:\/\//i, "")
 
   if (kind === "cidr") {
