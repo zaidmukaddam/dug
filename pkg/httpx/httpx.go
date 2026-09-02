@@ -15,6 +15,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -127,6 +128,8 @@ func get(ctx context.Context, rawURL string, extra map[string]string, maxBody in
 	current := rawURL
 	redirecting := false
 
+	// Requests are hops plus one: following 5 redirects takes 6 requests, and
+	// the sixth response is what proves the fifth redirect was not the last.
 	for hop := 0; hop <= MaxRedirects; hop++ {
 		parsed, err := url.Parse(current)
 		if err != nil {
@@ -270,8 +273,8 @@ func absolute(base *url.URL, location string) (string, bool) {
 		return "", false
 	}
 	if port := next.Port(); port != "" {
-		var number int
-		if _, err := fmt.Sscanf(port, "%d", &number); err != nil || guard.CheckPort(number) != nil {
+		number, err := strconv.Atoi(port)
+		if err != nil || guard.CheckPort(number) != nil {
 			return "", false
 		}
 	}

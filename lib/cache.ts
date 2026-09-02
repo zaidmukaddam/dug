@@ -56,6 +56,11 @@ export type CacheState = {
 
 const store = new Map<string, Payload>()
 
+// A session's worth of distinct answers. The map keeps insertion order, so
+// the oldest key is the first one, which is what makes evicting it on write
+// an O(1) lookup rather than a scan.
+const CAPACITY = 100
+
 export function cacheKey(command: string, target: string, extra?: string): string {
   return [command, target, extra ?? ""].join(" ").toLowerCase().trim()
 }
@@ -75,7 +80,26 @@ export function readCache(key: string): Payload | null {
 }
 
 export function writeCache(key: string, payload: Payload): void {
+  // Sweep expired entries first, so a long-idle tab does not carry them
+  // around only to evict a fresh entry to make room later.
+  for (const [k, v] of store) {
+    if (Date.now() - v.ts > v.ttl * 1000) {
+      store.delete(k)
+    }
+  }
+
+  // Delete before set so a rewrite of an existing key moves it to the end,
+  // keeping insertion order an accurate recency order.
+  store.delete(key)
   store.set(key, payload)
+
+  while (store.size > CAPACITY) {
+    const oldest = store.keys().next().value
+    if (oldest === undefined) {
+      break
+    }
+    store.delete(oldest)
+  }
 }
 
 export function clearCache(): number {

@@ -405,7 +405,9 @@ export function useWebMcp(
         }
 
         if (tools.every((tool) => registered.has(tool.name))) {
-          settle("registered", tools.length)
+          if (!controller.signal.aborted) {
+            settle("registered", tools.length)
+          }
           return
         }
         if (Date.now() >= deadline) {
