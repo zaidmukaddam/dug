@@ -392,10 +392,20 @@ export function hostFrom(word: string, kind: ArgumentKind): string {
     return withoutScheme || word
   }
 
-  const host = withoutScheme
-    .replace(/[/?#].*$/, "")
-    .replace(/^.*@/, "")
-    .replace(/:\d*$/, "")
+  const authority = withoutScheme.replace(/[/?#].*$/, "").replace(/^.*@/, "")
+
+  // A bracketed host is an ipv6 address with an optional port after the
+  // bracket. Unwrapping it is the whole of port handling for that form.
+  const bracketed = /^\[([^\]]+)\](?::\d*)?$/.exec(authority)
+  if (bracketed) {
+    return bracketed[1] || word
+  }
+
+  // A bare ipv6 address has more than one colon and no port can follow it
+  // unbracketed, so it is left whole. Everything else may end in :port, and
+  // an ipv6 address ends in :hextet, which the old strip cut off.
+  const colons = authority.split(":").length - 1
+  const host = colons > 1 ? authority : authority.replace(/:\d*$/, "")
 
   return host || word
 }
