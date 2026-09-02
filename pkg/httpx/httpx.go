@@ -128,7 +128,9 @@ func get(ctx context.Context, rawURL string, extra map[string]string, maxBody in
 	current := rawURL
 	redirecting := false
 
-	for hop := 0; hop < MaxRedirects; hop++ {
+	// Requests are hops plus one: following 5 redirects takes 6 requests, and
+	// the sixth response is what proves the fifth redirect was not the last.
+	for hop := 0; hop <= MaxRedirects; hop++ {
 		parsed, err := url.Parse(current)
 		if err != nil {
 			response.Err = "unparseable url"
