@@ -14,14 +14,8 @@ import (
 )
 
 func Handler(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query()
-	target := query.Get("target")
-	command := query.Get("command")
-	if command == "" {
-		command = "MAIL"
-	}
-	if target == "" {
-		screen.Fail(w, r, command, "", "no domain given", "this command needs a domain name")
+	command, target, ok := screen.Argument(w, r, "/api/mail", "MAIL")
+	if !ok {
 		return
 	}
 	name, err := dnsx.ToName(target)
