@@ -3,7 +3,7 @@
 // One layout for every command. Handlers name the component and the span; this
 // is a registry lookup and a grid.
 
-import { useState, type ComponentType } from "react"
+import { memo, useState, type ComponentType } from "react"
 
 import { GraphBars } from "@/components/graph-bars"
 import { GraphBullet } from "@/components/graph-bullet"
@@ -127,6 +127,24 @@ function withInstant(block: Block, ts: number): Block {
   return block
 }
 
+// The clock in Screen ticks once a second for the badge. Without this the tick
+// re-rendered every graph on the page, and a case file has four screens of
+// them. The payload reference only changes when a new answer arrives.
+const Blocks = memo(function Blocks({ payload }: { payload: Payload }) {
+  return (
+    <>
+      {payload.blocks.map((block, index) => (
+        <div
+          key={`${block.component}-${index}`}
+          className={cn("min-w-0", SPAN_CLASS[spanFor(block)] ?? SPAN_CLASS[1])}
+        >
+          <BlockFrame block={withInstant(block, payload.ts)} />
+        </div>
+      ))}
+    </>
+  )
+})
+
 export function Screen({ payload }: { payload: Payload }) {
   // Null until mounted, so a cached answer never reads as live on first paint.
   const now = useGraphNow(1000)
@@ -144,14 +162,7 @@ export function Screen({ payload }: { payload: Payload }) {
           their row, which left short frames like the countdown carrying two
           hundred pixels of empty space. */}
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-flow-dense lg:grid-cols-3">
-        {payload.blocks.map((block, index) => (
-          <div
-            key={`${block.component}-${index}`}
-            className={cn("min-w-0", SPAN_CLASS[spanFor(block)] ?? SPAN_CLASS[1])}
-          >
-            <BlockFrame block={withInstant(block, payload.ts)} />
-          </div>
-        ))}
+        <Blocks payload={payload} />
 
         {/* Live answers read 100% here, so the badge covers those instead. */}
         {state.cached ? (
