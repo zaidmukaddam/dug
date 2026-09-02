@@ -168,13 +168,29 @@ export function Screen({ payload }: { payload: Payload }) {
         ) : null}
       </div>
 
+      {/* Provenance and limits, folded. Every screen ends with two or three of
+          these and on a phone they were the tallest thing after the verdict.
+          A native details keeps them one tap away with no state to manage,
+          and the text representation still prints them in full. */}
       {payload.notes.length > 0 ? (
-        <footer className="flex flex-col gap-2 pt-4 text-xs leading-relaxed text-muted-foreground">
-          {payload.notes.map((note, index) => (
-            <p key={index} className="max-w-3xl text-pretty">
-              {note}
-            </p>
-          ))}
+        <footer className="pt-4 text-xs leading-relaxed text-muted-foreground">
+          <details className="group">
+            <summary className="cursor-pointer list-none select-none hover:text-foreground [&::-webkit-details-marker]:hidden">
+              <span className="font-mono">
+                <span className="group-open:hidden">[+]</span>
+                <span className="hidden group-open:inline">[-]</span>
+              </span>{" "}
+              {payload.notes.length} {payload.notes.length === 1 ? "note" : "notes"} on how this
+              was measured
+            </summary>
+            <div className="flex flex-col gap-2 pt-3">
+              {payload.notes.map((note, index) => (
+                <p key={index} className="max-w-3xl text-pretty">
+                  {note}
+                </p>
+              ))}
+            </div>
+          </details>
         </footer>
       ) : null}
     </section>
