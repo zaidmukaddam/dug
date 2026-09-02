@@ -12,6 +12,7 @@ package handler
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -203,9 +204,17 @@ func run(r *http.Request, result *screen.Result, name string) {
 func scriptURLs(origin, body string) []string {
 	found := []string{}
 	seen := map[string]bool{}
+	site, err := url.Parse(origin)
+	if err != nil {
+		return found
+	}
 
 	for _, src := range pagex.ScriptSources(body, origin) {
-		if !strings.HasPrefix(src, origin) || seen[src] {
+		parsed, err := url.Parse(src)
+		// Same origin means the same scheme and host, compared as parsed
+		// parts. A string prefix let example.com.evil.com count as
+		// example.com's own script, which is the case this filter exists for.
+		if err != nil || parsed.Scheme != site.Scheme || parsed.Host != site.Host || seen[src] {
 			continue
 		}
 		seen[src] = true
