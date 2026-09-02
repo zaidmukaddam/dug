@@ -30,14 +30,8 @@ import (
 const maxNetHosts = 256
 
 func Handler(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query()
-	target := strings.TrimSpace(query.Get("target"))
-	command := query.Get("command")
-	if command == "" {
-		command = "IP"
-	}
-	if target == "" {
-		screen.Fail(w, r, command, "", "no address given", "this command needs an address")
+	command, target, ok := screen.Argument(w, r, "/api/addr", "IP")
+	if !ok {
 		return
 	}
 

@@ -23,19 +23,18 @@ import (
 )
 
 func Handler(w http.ResponseWriter, r *http.Request) {
-	target := strings.TrimSpace(r.URL.Query().Get("target"))
-	if target == "" {
-		screen.Fail(w, r, "SEO", "", "no domain given", "this command needs a domain name")
+	command, target, ok := screen.Argument(w, r, "/api/seo", "SEO")
+	if !ok {
 		return
 	}
 
 	name, err := dnsx.ToName(target)
 	if err != nil {
-		screen.Fail(w, r, "SEO", target, target+" is not a domain name", err.Error())
+		screen.Fail(w, r, command, target, target+" is not a domain name", err.Error())
 		return
 	}
 
-	result := screen.New("SEO", name)
+	result := screen.New(command, name)
 	run(r, result, name)
 	result.Write(w, r)
 }

@@ -40,14 +40,8 @@ var securityChecks = []struct{ header, label, why string }{
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query()
-	target := query.Get("target")
-	command := query.Get("command")
-	if command == "" {
-		command = "HTTP"
-	}
-	if target == "" {
-		screen.Fail(w, r, command, "", "no host given", "this command needs a hostname")
+	command, target, ok := screen.Argument(w, r, "/api/fetch", "HTTP")
+	if !ok {
 		return
 	}
 	name, err := dnsx.ToName(target)

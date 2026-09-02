@@ -15,19 +15,18 @@ import (
 var weakProtocols = []string{"TLS 1.0", "TLS 1.1"}
 
 func Handler(w http.ResponseWriter, r *http.Request) {
-	target := r.URL.Query().Get("target")
-	if target == "" {
-		screen.Fail(w, r, "TLS", "", "no host given", "this command needs a hostname")
+	command, target, ok := screen.Argument(w, r, "/api/tls", "TLS")
+	if !ok {
 		return
 	}
 
 	name, err := dnsx.ToName(target)
 	if err != nil {
-		screen.Fail(w, r, "TLS", target, target+" is not a hostname", err.Error())
+		screen.Fail(w, r, command, target, target+" is not a hostname", err.Error())
 		return
 	}
 
-	result := screen.New("TLS", name)
+	result := screen.New(command, name)
 	run(r, result, name)
 	result.Write(w, r)
 }

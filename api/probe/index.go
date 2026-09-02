@@ -59,13 +59,8 @@ var serviceByPort = func() map[int]string {
 
 func Handler(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
-	target := strings.TrimSpace(query.Get("target"))
-	command := query.Get("command")
-	if command == "" {
-		command = "PING"
-	}
-	if target == "" {
-		screen.Fail(w, r, command, "", "no host given", "this command needs a hostname or an ip address")
+	command, target, ok := screen.Argument(w, r, "/api/probe", "PING")
+	if !ok {
 		return
 	}
 
