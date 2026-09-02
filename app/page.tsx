@@ -96,6 +96,19 @@ async function perform(step: Lookup): Promise<Outcome> {
   try {
     const response = await fetch(step.url, { headers: { accept: "application/json" } })
     const payload = (await response.json()) as Payload
+    // A refusal and a rate limit arrive as the same envelope with error set and
+    // a 4xx status. Neither is an answer: it is not cached, not pushed as a
+    // screen, and an agent calling through a tool sees it as the failure it is.
+    if (!response.ok || payload.error) {
+      return {
+        ok: false,
+        failure: {
+          input: step.label,
+          message: payload.error?.message ?? `the api answered ${response.status}`,
+          hint: payload.error?.hint,
+        },
+      }
+    }
     writeCache(step.key, payload)
     return { ok: true, label: step.label, payload }
   } catch (error) {
