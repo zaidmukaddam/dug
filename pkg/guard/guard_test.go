@@ -54,6 +54,18 @@ var mustBlock = []struct{ addr, why string }{
 	{"64:ff9b::7f00:1", "NAT64 wrapping loopback"},
 	{"64:ff9b::a9fe:a9fe", "NAT64 wrapping metadata"},
 	{"64:ff9b::a00:1", "NAT64 wrapping RFC 1918"},
+
+	// IPv4-compatible form, deprecated but still parseable: the v4 sits in the
+	// low 32 bits of an otherwise zero address, and none of the netip
+	// predicates see through it.
+	{"::7f00:1", "ipv4-compatible wrapping loopback"},
+	{"::a9fe:a9fe", "ipv4-compatible wrapping metadata"},
+	{"::a00:1", "ipv4-compatible wrapping RFC 1918"},
+	{"::127.0.0.1", "ipv4-compatible wrapping loopback, dotted"},
+
+	// Ranges the predicates have no name for.
+	{"fec0::1", "site-local, deprecated"},
+	{"5f00::1", "srv6 sids"},
 }
 
 // These must be reachable, or the tool cannot do its job. The NAT64 and 6to4

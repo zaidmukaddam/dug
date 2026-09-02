@@ -41,6 +41,8 @@ var blocked = []struct {
 	{netip.MustParsePrefix("100::/64"), "discard-only"},
 	{netip.MustParsePrefix("2001::/23"), "IETF protocol assignments"},
 	{netip.MustParsePrefix("2001:db8::/32"), "documentation"},
+	{netip.MustParsePrefix("fec0::/10"), "site-local"},
+	{netip.MustParsePrefix("5f00::/16"), "srv6"},
 }
 
 var nat64 = netip.MustParsePrefix("64:ff9b::/96")
@@ -76,6 +78,15 @@ func embeddedV4(addr netip.Addr) (netip.Addr, bool) {
 	}
 
 	if nat64.Contains(addr) {
+		return netip.AddrFrom4([4]byte{bytes[12], bytes[13], bytes[14], bytes[15]}), true
+	}
+
+	// ::a.b.c.d, the IPv4-compatible form: the top 96 bits are zero and the
+	// v4 is the last four bytes. Deprecated, still parseable, and unseen by
+	// every netip predicate. :: itself and ::1 are excluded so they keep
+	// their own names (unspecified, loopback) in the reason.
+	var top [12]byte
+	if [12]byte(bytes[:12]) == top && !addr.IsUnspecified() && !addr.IsLoopback() {
 		return netip.AddrFrom4([4]byte{bytes[12], bytes[13], bytes[14], bytes[15]}), true
 	}
 
