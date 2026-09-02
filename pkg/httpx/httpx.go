@@ -15,6 +15,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -127,7 +128,7 @@ func get(ctx context.Context, rawURL string, extra map[string]string, maxBody in
 	current := rawURL
 	redirecting := false
 
-	for hop := 0; hop <= MaxRedirects; hop++ {
+	for hop := 0; hop < MaxRedirects; hop++ {
 		parsed, err := url.Parse(current)
 		if err != nil {
 			response.Err = "unparseable url"
@@ -270,8 +271,8 @@ func absolute(base *url.URL, location string) (string, bool) {
 		return "", false
 	}
 	if port := next.Port(); port != "" {
-		var number int
-		if _, err := fmt.Sscanf(port, "%d", &number); err != nil || guard.CheckPort(number) != nil {
+		number, err := strconv.Atoi(port)
+		if err != nil || guard.CheckPort(number) != nil {
 			return "", false
 		}
 	}
