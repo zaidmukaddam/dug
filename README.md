@@ -2,7 +2,7 @@
 
 [dug.sh](https://dug.sh), a monospace, command-driven terminal for domain and network diagnostics. Every screen leads with the answer in a sentence; the graphs below it are the evidence. Nothing is precomputed or stored between queries.
 
-The same twenty-five commands are served four ways from one implementation: as a browser app, as plain text to `curl`, as an MCP server, and as WebMCP tools on the page itself. An agent in the tab calls a tool and the answer renders on screen, so the person watching reads the same evidence the agent got, not a transcript of what it claims to have found.
+Twenty-five commands are served four ways from one implementation: as a browser app, as plain text to `curl`, as an MCP server, and as WebMCP tools on the page itself; HELP exists only in the browser. An agent in the tab calls a tool and the answer renders on screen, so the person watching reads the same evidence the agent got, not a transcript of what it claims to have found.
 
 ```bash
 curl dug.sh/tls/github.com          # a terminal gets text
@@ -26,8 +26,8 @@ await document.modelContext.executeTool(tool, '{"target":"github.com"}')
 | mail | `MAIL` `SPF` |
 | addressing | `IP` `ASN` `NET` `ME` |
 | reachability | `PING` `ROUTE` `PORTS` |
-| readability | `SEO` `AEO` `OG` |
-| meta | `VS` `SRC` `HELP` |
+| readability | `SEO` `AEO` `OG` `WEBMCP` |
+| meta | `VS` `SRC` `HELP` (browser only) |
 
 ```
 DIG example.com MX          PORTS scanme.nmap.org 22,80,443
@@ -51,6 +51,8 @@ curl -H 'Accept: application/json' dug.sh/mail/github.com
 
 The query form the browser uses stays valid, so `/api/tls?command=TLS&target=…` answers the same. Force a representation with `?format=text` or `?format=json`. Responses carry `Vary: Accept, User-Agent`. Without it, a shared cache serves one client’s representation to another.
 
+Every response publishes a quota of 60 requests per minute in `RateLimit-*` headers; see `/developers`.
+
 | Route | Is |
 | --- | --- |
 | `/llms.txt` | The grammar, the envelope, and the limits |
@@ -62,7 +64,7 @@ The query form the browser uses stays valid, so `/api/tls?command=TLS&target=…
 | `/mcp` | MCP server, Streamable HTTP, one tool per command |
 | `/deprecation` | How a route is retired, and how much notice you get |
 
-Every response names the first three as `Link` relations (`service-desc`, `service-doc`, `describedby`) on the API and on the HTML pages alike, so a caller holding any single response can find the rest. `/api/mcp` is the same endpoint as `/mcp` and still answers.
+Every response names four `Link` relations on the API and on the HTML pages alike: `service-desc` for `/openapi.json`, `service-doc` for `/developers`, and `describedby` for `/llms.txt` and `/.well-known/ai-catalog.json`, so a caller holding any single response can find the rest. `/api/mcp` is the same endpoint as `/mcp` and still answers.
 
 The MCP server is stateless and issues no session: nothing is stored between queries anywhere else here either. Its tools dispatch to the same handlers the HTTP routes use, so there’s no second implementation to drift.
 
@@ -100,6 +102,8 @@ Biome lints and Prettier formats; its Tailwind plugin sorts the class lists.
 app/              terminal viewport, command grammar, screen renderer
 app/not-found.tsx 404, rendered as a failed lookup, not a dead end
 app/error.tsx     the route error boundary, in the same visual language
+app/plan.ts       the planner Server Action, the only model call
+proxy.ts          rate limit, version gate, markdown negotiation, the shared-link redirect
 api/<route>/      Vercel Go functions, one exported Handler each
 api/llms          llms.txt, generated from pkg/commands
 api/openapi       OpenAPI 3.1, generated from pkg/commands
@@ -112,9 +116,13 @@ pkg/mcpx          the server identity and tool list the card and mcp share
 pkg/guard         address validation, used by every dialer
 pkg/commands      the grammar, mirrored by app/commands/grammar.ts
 pkg/screen        the block envelope, and its json and text renderings
-pkg/              dnsx, certs, httpx, rdap, mailx, icmpx, epp
+pkg/wiring        cross-language contract tests
+pkg/              dnsx, certs, httpx, rdap, mailx, icmpx, epp, pagex, resolvers, guard, screen, commands, mcpx, wiring
 components/       markdown-graphs, copied in via shadcn registry
 lib/webmcp.ts     the same commands, for an agent inside the page
+lib/investigations.ts  the landing's worked WHY examples
+hooks/            the sanctioned useEffect wrapper
+scripts/          screenshots
 ```
 
 The shared Go packages are `pkg/` and not `internal/`. Vercel compiles each `api/<route>/index.go` inside a synthetic module named `handler`, so an import of `internal/` is a cross-module import and Go refuses it: `use of internal package ... not allowed`. The name is the whole fix.
