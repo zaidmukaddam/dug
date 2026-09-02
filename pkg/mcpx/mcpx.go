@@ -35,6 +35,46 @@ func Capabilities() map[string]any {
 	return map[string]any{"tools": map[string]any{}}
 }
 
+// Card is the server card, SEP-1649: what a client would have learned from
+// initialize plus tools/list, without the handshake, so it can decide whether
+// to connect and validate every tool description before it does.
+//
+// The one place the document is built, so the HTTP card and the MCP resource
+// that both serve it cannot drift apart from each other.
+func Card(origin string) map[string]any {
+	return map[string]any{
+		// The card document's own schema version, not the server's.
+		"version":         "1.0",
+		"protocolVersion": ProtocolVersion,
+		"serverInfo": map[string]any{
+			"name":    ServerName,
+			"title":   ServerTitle,
+			"version": ServerVersion,
+		},
+		"description": "Live domain and network diagnostics: dns, tls, mail, rdap, addressing and " +
+			"routing. Every call is a fresh lookup and nothing is stored between calls.",
+		"documentationUrl": origin + "/developers",
+		"transport": map[string]any{
+			"type": "streamable-http",
+			// A path rather than a url, which is what the SEP asks for. /api/mcp
+			// is the same endpoint and also answers.
+			"endpoint": "/mcp",
+		},
+		"capabilities": Capabilities(),
+		// Stated rather than omitted: "none needed" is a fact a client wants
+		// before connecting, and an absent field only says nobody wrote one down.
+		"authentication": map[string]any{
+			"required": false,
+			"schemes":  []any{},
+		},
+		"instructions": Instructions,
+		// Static rather than the reserved string "dynamic": the set is fixed at
+		// build time, so charging a client a tools/list round trip to learn it
+		// would be the cost this document exists to remove.
+		"tools": Tools(),
+	}
+}
+
 // ToolName is the one place the prefix lives. It is also how a call is routed
 // back to a command, so the two directions cannot disagree about spelling.
 func ToolName(spec commands.Spec) string {
