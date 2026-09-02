@@ -1,6 +1,6 @@
-// Mirrors internal/resolvers. The Go list is what actually gets queried; this
+// Mirrors pkg/resolvers. The Go list is what actually gets queried; this
 // copy exists so HELP and SRC can render the list without a round trip.
-// internal/wiring fails if the two ever drift apart.
+// pkg/wiring fails if the two ever drift apart.
 
 export type Resolver = {
   id: string

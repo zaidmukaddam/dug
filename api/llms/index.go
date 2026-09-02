@@ -1,7 +1,7 @@
 // llms.txt. What this tool is and how to call it, for an agent that arrived
 // without being told.
 //
-// Generated from internal/commands rather than written by hand, so it cannot
+// Generated from pkg/commands rather than written by hand, so it cannot
 // describe a command that does not exist or miss one that does.
 package handler
 

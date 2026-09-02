@@ -1,4 +1,4 @@
-// OpenAPI 3.1, generated from internal/commands.
+// OpenAPI 3.1, generated from pkg/commands.
 //
 // Written as an operation per pretty path rather than one operation with a
 // `command` enum, because a tool picker reads one operation per capability and
