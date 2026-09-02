@@ -21,7 +21,12 @@ import { useMountEffect } from "@/hooks/use-mount-effect"
 import { cacheKey, cacheSize, readCache, writeCache, type Payload } from "@/lib/cache"
 import { easeOutCubic } from "@/lib/graph-motion"
 import { plan, type PlanOutcome } from "@/app/plan"
-import { INVESTIGATIONS, type Investigation, matchInvestigation } from "@/lib/investigations"
+import {
+  expandSteps,
+  INVESTIGATIONS,
+  type Investigation,
+  matchInvestigation,
+} from "@/lib/investigations"
 import { RESOLVERS } from "@/lib/resolvers"
 import { cn } from "@/lib/utils"
 import { useWebMcp } from "@/lib/webmcp"
@@ -352,7 +357,7 @@ export default function Page() {
           setInput("")
           setInFlight((inFlight) => inFlight - 1)
           settled = true
-          await investigate(plan.question, [plan.target], plan.steps, "dug")
+          await investigate(plan.question, plan.targets, expandSteps(plan.steps, plan.targets), "dug")
         } finally {
           if (!settled) {
             setInFlight((inFlight) => inFlight - 1)
