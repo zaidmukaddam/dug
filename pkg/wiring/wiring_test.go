@@ -176,7 +176,7 @@ func TestScreenPropsUseExpectedJSONNames(t *testing.T) {
 	for _, name := range []string{
 		`json:"title"`, `json:"rows"`, `json:"items"`, `json:"headers"`,
 		`json:"sections"`, `json:"nodes"`, `json:"events"`, `json:"days"`,
-		`json:"columns"`, `json:"values"`, `json:"segments"`, `json:"steps"`,
+		`json:"columns"`, `json:"values"`, `json:"steps"`,
 		`json:"fromLabel"`, `json:"toLabel"`,
 	} {
 		if !strings.Contains(props, name) {

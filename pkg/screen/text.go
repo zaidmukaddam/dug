@@ -244,17 +244,6 @@ func blockText(block Block) string {
 		}
 		return tableText(append([]string{""}, p.Columns...), rows)
 
-	case StackProps:
-		var b strings.Builder
-		for _, row := range p.Rows {
-			parts := make([]string, 0, len(row.Segments))
-			for _, segment := range row.Segments {
-				parts = append(parts, fmt.Sprintf("%s %d", segment.Label, segment.Value))
-			}
-			fmt.Fprintf(&b, "%s%s · %s\n", indent, row.Label, strings.Join(parts, ", "))
-		}
-		return b.String()
-
 	case UptimeProps:
 		var b strings.Builder
 		fmt.Fprintf(&b, "%s%s\n", indent, strings.Join(p.Days, " "))
