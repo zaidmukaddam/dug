@@ -84,11 +84,12 @@ pnpm dev
 | Script | Does |
 | --- | --- |
 | `pnpm dev` | Go API on `:8787` and Next together |
-| `pnpm test:api` | Guard vectors and wiring checks |
+| `pnpm test:api` | Guard vectors and wiring checks, offline |
 | `pnpm test:live` | Network-touching tests: registry spread, TLS chains, ICMP |
 | `pnpm lint` | Biome, with its next and react domains |
 | `pnpm typecheck` | `tsc --noEmit` |
-| `pnpm vet` | `go vet` and `gofmt` |
+| `pnpm vet` | `go vet`, and `gofmt` that fails on an unformatted file |
+| `pnpm verify` | Everything CI runs: typecheck, lint, vet, offline tests, build |
 | `node scripts/shoot.mjs "TLS github.com"` | Screenshot a screen, `THEME=dark` for dark |
 
 Biome lints and Prettier formats; its Tailwind plugin sorts the class lists.
