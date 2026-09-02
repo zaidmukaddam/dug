@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	addrapi "github.com/zaidmukaddam/dug/api/addr"
+	"github.com/zaidmukaddam/dug/pkg/guard"
 	"github.com/zaidmukaddam/dug/pkg/screen"
 )
 
@@ -40,7 +41,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// purpose. That is right for a target someone named and wrong as an error
 	// here: running the project locally, the caller genuinely is 127.0.0.1, and
 	// showing a refusal would read as a fault rather than as the answer.
-	if parsed, err := netip.ParseAddr(address); err == nil && !isPublic(parsed) {
+	if parsed, err := netip.ParseAddr(address); err == nil && guard.Check(parsed) != nil {
 		result.SetVerdict("ok", "this request came from "+address,
 			"a private address, so there’s no origin network to look up. "+
 				"running locally, this is your own machine.")
@@ -112,12 +113,6 @@ func normalise(value string) string {
 		return ""
 	}
 	return addr.Unmap().String()
-}
-
-func isPublic(addr netip.Addr) bool {
-	addr = addr.Unmap()
-	return !addr.IsLoopback() && !addr.IsPrivate() && !addr.IsLinkLocalUnicast() &&
-		!addr.IsLinkLocalMulticast() && !addr.IsUnspecified() && !addr.IsMulticast()
 }
 
 func version(addr netip.Addr) string {
