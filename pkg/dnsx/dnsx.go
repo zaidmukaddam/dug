@@ -1,6 +1,6 @@
 // Package dnsx runs DNS queries against the fixed resolver list.
 //
-// Query only ever talks to a constant from internal/resolvers, so it needs no
+// Query only ever talks to a constant from pkg/resolvers, so it needs no
 // address guard. Walk is the exception: it learns the next nameserver address
 // from the reply it was just handed, so every candidate it follows goes
 // through the guard first.

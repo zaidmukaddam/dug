@@ -2,7 +2,7 @@
 //
 // app/commands/grammar.ts is the same list for the browser. This copy exists
 // because llms.txt, the OpenAPI document and the MCP tool list are all served
-// by Go functions and all describe the same grammar; internal/wiring fails if
+// by Go functions and all describe the same grammar; pkg/wiring fails if
 // the two lists drift, exactly as it does for the resolver list.
 package commands
 

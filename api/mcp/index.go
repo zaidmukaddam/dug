@@ -1,6 +1,6 @@
 // MCP over Streamable HTTP, stateless.
 //
-// One tool per command, generated from internal/commands, each dispatched to
+// One tool per command, generated from pkg/commands, each dispatched to
 // the same handler the HTTP route uses. There is no second implementation of
 // any command here: a tool call builds a request and runs the handler, so an
 // agent and a browser get the same answer from the same code.

@@ -1,6 +1,6 @@
 package wiring
 
-// internal/commands is the grammar in Go, and llms.txt, the OpenAPI document
+// pkg/commands is the grammar in Go, and llms.txt, the OpenAPI document
 // and the MCP tool list are all generated from it. app/commands/grammar.ts is
 // the same grammar for the browser. A drift between them means an agent is
 // told about a command the browser does not have, or offered the wrong
@@ -39,14 +39,14 @@ func TestCommandListsMatch(t *testing.T) {
 	}
 
 	if len(order) != len(commands.List) {
-		t.Fatalf("grammar.ts has %d commands (HELP excluded), internal/commands has %d",
+		t.Fatalf("grammar.ts has %d commands (HELP excluded), pkg/commands has %d",
 			len(order), len(commands.List))
 	}
 
 	for i, name := range order {
 		spec := commands.List[i]
 		if spec.Name != name {
-			t.Fatalf("position %d: grammar.ts has %s, internal/commands has %s", i, name, spec.Name)
+			t.Fatalf("position %d: grammar.ts has %s, pkg/commands has %s", i, name, spec.Name)
 		}
 
 		got := [5]string{spec.Family, spec.Endpoint, spec.Argument, spec.Summary, spec.Example}
@@ -57,7 +57,7 @@ func TestCommandListsMatch(t *testing.T) {
 }
 
 // The pretty paths are derived from the verb in next.config.ts and written out
-// in internal/commands. They have to agree, or the route an agent reads in
+// in pkg/commands. They have to agree, or the route an agent reads in
 // llms.txt is not the route the rewrite serves.
 func TestPrettyPathsMatchTheRewriteRule(t *testing.T) {
 	for _, spec := range commands.List {

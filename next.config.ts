@@ -30,7 +30,7 @@ const SERVICE_LINKS = [
 
 // The curl and agent surface: `curl /tls/github.com` rather than
 // `curl '/api/tls?command=TLS&target=github.com'`. Derived from the same
-// COMMANDS the browser parses, and internal/wiring checks these against the Go
+// COMMANDS the browser parses, and pkg/wiring checks these against the Go
 // list that llms.txt, OpenAPI and MCP are generated from.
 function prettyPaths() {
   return COMMANDS.filter((spec) => spec.endpoint).flatMap((spec) => {

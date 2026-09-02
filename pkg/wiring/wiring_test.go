@@ -2,7 +2,7 @@
 //
 // Three drifts this catches, all silent until a request runs:
 //
-//   - lib/resolvers.ts diverging from internal/resolvers. The Go list is what
+//   - lib/resolvers.ts diverging from pkg/resolvers. The Go list is what
 //     gets queried and the TypeScript list is what gets displayed, so a drift
 //     means the screen names a resolver that was never asked.
 //   - A command in the grammar routed at an endpoint with no handler package.
@@ -54,7 +54,7 @@ func TestResolverListsMatch(t *testing.T) {
 	found := resolverRE.FindAllStringSubmatch(read(t, root, "lib", "resolvers.ts"), -1)
 
 	if len(found) != len(resolvers.List) {
-		t.Fatalf("lib/resolvers.ts has %d entries, internal/resolvers has %d", len(found), len(resolvers.List))
+		t.Fatalf("lib/resolvers.ts has %d entries, pkg/resolvers has %d", len(found), len(resolvers.List))
 	}
 	for i, match := range found {
 		want := resolvers.List[i]
