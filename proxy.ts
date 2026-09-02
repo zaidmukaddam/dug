@@ -31,6 +31,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 
 import { COMMANDS, FAMILIES } from "@/app/commands/grammar"
+import { commandLine } from "@/lib/command-line"
 import { RESOLVERS } from "@/lib/resolvers"
 
 // The pretty path prefixes the Go functions answer on, derived rather than
@@ -225,14 +226,6 @@ function wantsApp(request: NextRequest): boolean {
     return false
   }
   return (request.headers.get("accept")?.toLowerCase() ?? "").includes("text/html")
-}
-
-// The pretty path back into the line a person would have typed. NET is the one
-// command whose argument contains a slash, so its two segments rejoin.
-function commandLine(pathname: string): string {
-  const [verb, ...rest] = pathname.split("/").filter(Boolean).map(decodeURIComponent)
-  const args = verb === "net" ? [rest.join("/")] : rest
-  return [verb.toUpperCase(), ...args].join(" ")
 }
 
 const ORIGIN = "https://dug.sh"
