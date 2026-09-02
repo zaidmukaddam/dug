@@ -160,11 +160,16 @@ async function askPlanner(ask: string): Promise<PlanOutcome> {
 export default function Page() {
   const [input, setInput] = useState("")
   const [entries, setEntries] = useState<Entry[]>([])
-  const [status, setStatus] = useState<Status>("idle")
+  // A counter rather than a boolean: overlapping callers of run() each own
+  // their increment and decrement, so the first to finish does not clear the
+  // skeleton out from under the one still in flight.
+  const [inFlight, setInFlight] = useState(0)
+  const status: Status = inFlight > 0 ? "running" : "idle"
   const [failure, setFailure] = useState<ParseFailure | null>(null)
   const [history, setHistory] = useState<string[]>([])
   const [cursor, setCursor] = useState(-1)
   const nextId = useRef(0)
+  const submitting = useRef(false)
   const reduce = useReducedMotion()
 
   // Nothing asked for and nothing on the way: the one state the page is allowed
@@ -218,7 +223,7 @@ export default function Page() {
       const step = lookup(text)
       const fetching = step.kind === "fetch"
       if (fetching) {
-        setStatus("running")
+        setInFlight((inFlight) => inFlight + 1)
       }
 
       try {
@@ -232,7 +237,7 @@ export default function Page() {
         return outcome.payload
       } finally {
         if (fetching) {
-          setStatus("idle")
+          setInFlight((inFlight) => inFlight - 1)
         }
       }
     },
@@ -297,64 +302,76 @@ export default function Page() {
 
   const submit = useCallback(async () => {
     const text = input.trim()
-    if (!text || status === "running") {
+    if (!text || submitting.current) {
       return
     }
+    submitting.current = true
+    try {
+      setHistory((current) => [text, ...current.filter((item) => item !== text)].slice(0, 50))
+      setCursor(-1)
 
-    setHistory((current) => [text, ...current.filter((item) => item !== text)].slice(0, 50))
-    setCursor(-1)
-
-    // WHY is answered here rather than by parse, because it is not a command:
-    // no endpoint returns several screens, so there is nothing for the grammar
-    // to route it to.
-    const why = matchInvestigation(text)
-    if (why?.ok) {
-      setInput("")
-      setFailure(null)
-      await investigate(
-        why.investigation.question,
-        why.target,
-        why.investigation.steps(why.target),
-        "you"
-      )
-      return
-    }
-
-    // A WHY that did not match is one of two things. Three words or fewer is
-    // the keyword form with a typo, and the topic error is the useful answer.
-    // Longer is a sentence that happens to start with "why", and it belongs to
-    // the planner: "why is mail from acme.com going to spam" is not a request
-    // for an investigation called "is".
-    if (why && text.split(/\s+/).length <= 3) {
-      setFailure(why.failure)
-      return
-    }
-
-    // Plain words go to the planner. Anything that starts with a command, or is
-    // too short to be a sentence, still goes through parse so a typo gets the
-    // normal error rather than a model call.
-    if (looksLikeAQuestion(text)) {
-      setStatus("running")
-      setFailure(null)
-      try {
-        const plan = await askPlanner(text)
-        if (!plan.ok) {
-          setFailure(plan.failure)
-          return
-        }
+      // WHY is answered here rather than by parse, because it is not a command:
+      // no endpoint returns several screens, so there is nothing for the grammar
+      // to route it to.
+      const why = matchInvestigation(text)
+      if (why?.ok) {
         setInput("")
-        setStatus("idle")
-        await investigate(plan.question, plan.target, plan.steps, "dug")
-      } finally {
-        setStatus("idle")
+        setFailure(null)
+        await investigate(
+          why.investigation.question,
+          why.target,
+          why.investigation.steps(why.target),
+          "you"
+        )
+        return
       }
-      return
-    }
 
-    if (await run(text)) {
-      setInput("")
+      // A WHY that did not match is one of two things. Three words or fewer is
+      // the keyword form with a typo, and the topic error is the useful answer.
+      // Longer is a sentence that happens to start with "why", and it belongs to
+      // the planner: "why is mail from acme.com going to spam" is not a request
+      // for an investigation called "is".
+      if (why && text.split(/\s+/).length <= 3) {
+        setFailure(why.failure)
+        return
+      }
+
+      // Plain words go to the planner. Anything that starts with a command, or is
+      // too short to be a sentence, still goes through parse so a typo gets the
+      // normal error rather than a model call.
+      if (looksLikeAQuestion(text)) {
+        setInFlight((inFlight) => inFlight + 1)
+        // Tracks whether the increment above has already been matched by a
+        // decrement, so the finally below does not double-decrement on the
+        // success path, which turns the shared skeleton off early (see the
+        // comment on investigate()).
+        let settled = false
+        setFailure(null)
+        try {
+          const plan = await askPlanner(text)
+          if (!plan.ok) {
+            setFailure(plan.failure)
+            return
+          }
+          setInput("")
+          setInFlight((inFlight) => inFlight - 1)
+          settled = true
+          await investigate(plan.question, plan.target, plan.steps, "dug")
+        } finally {
+          if (!settled) {
+            setInFlight((inFlight) => inFlight - 1)
+          }
+        }
+        return
+      }
+
+      if (await run(text)) {
+        setInput("")
+      }
+    } finally {
+      submitting.current = false
     }
-  }, [input, investigate, run, status])
+  }, [input, investigate, run])
 
   // Shell history, only reachable when the completion list is closed. The
   // palette decides which of the two owns the arrow keys.
