@@ -248,3 +248,18 @@ func TestNetGridCellsUseTheValueTheComponentFills(t *testing.T) {
 		t.Error("api/addr/index.go still marks a named address with 4, which the cells component draws as empty")
 	}
 }
+
+// FitSpan in pkg/screen is the one span floor. A second one in the frontend
+// would raise a span the payload never asked for, silently undoing whatever
+// floor FitSpan sets.
+func TestTheFrontendHasNoSpanFloor(t *testing.T) {
+	root := repoRoot(t)
+	source := read(t, root, "app", "screens", "screen.tsx")
+
+	if strings.Contains(source, "MIN_SPAN") {
+		t.Error("app/screens/screen.tsx has a MIN_SPAN floor; the floor lives in FitSpan in pkg/screen")
+	}
+	if strings.Contains(source, "Math.max(block.span") {
+		t.Error("app/screens/screen.tsx widens block.span; the floor lives in FitSpan in pkg/screen")
+	}
+}

@@ -67,3 +67,15 @@ func TestFitSpanNeverNarrowsKpi(t *testing.T) {
 		t.Errorf("span = %d, want the requested 3 kept", got)
 	}
 }
+
+// The table-like components floor at two columns, not three: they wrap inside
+// their frame, so a third column just packed the grid less densely. A floor
+// still never narrows a span already wider than it.
+func TestFitSpanTableFloor(t *testing.T) {
+	if got := FitSpan("GraphTable", TableProps{}, 1); got != 2 {
+		t.Errorf("span = %d, want the floor of 2", got)
+	}
+	if got := FitSpan("GraphBars", BarsProps{}, 3); got != 3 {
+		t.Errorf("span = %d, want the requested 3 kept", got)
+	}
+}
