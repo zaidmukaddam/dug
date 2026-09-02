@@ -334,9 +334,14 @@ const (
 //
 // Only the text components are measured. Charts scale their glyph tracks to any
 // width, and the tables scroll inside their own frame.
+//
+// Minimum columns each component needs before its content overflows the frame.
+// The tables wrap inside their frame, so two columns is enough. The track
+// components need ~440px for their fixed label and display columns plus a
+// 20 to 24 glyph tick track, which also lands at two.
 func FitSpan(component string, props any, span int) int {
 	floor := map[string]int{
-		"GraphTable": 3, "GraphSheet": 3, "GraphMatrix": 3, "GraphCompare": 3,
+		"GraphTable": 2, "GraphSheet": 2, "GraphMatrix": 2, "GraphCompare": 2,
 		"GraphBullet": 2, "GraphRank": 2, "GraphFunnel": 2, "GraphWaterfall": 2,
 		"GraphBars": 2,
 	}[component]

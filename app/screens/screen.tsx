@@ -76,27 +76,10 @@ const SPAN_CLASS: Record<number, string> = {
   3: "lg:col-span-3",
 }
 
-// Minimum columns each component needs before its content overflows the frame.
-//
-// The tables sat at 3 to avoid a horizontal scrollbar. They wrap now, so two
-// columns is enough and the grid packs far denser vertically: a tall table can
-// share a row with a stack of short frames instead of forcing its own.
-// The track components still need ~440px for their fixed label and display
-// columns plus a 20 to 24 tick glyph track.
-const MIN_SPAN: Record<string, number> = {
-  GraphTable: 2,
-  GraphSheet: 2,
-  GraphMatrix: 2,
-  GraphCompare: 2,
-  GraphBullet: 2,
-  GraphRank: 2,
-  GraphFunnel: 2,
-  GraphWaterfall: 2,
-  GraphBars: 2,
-}
-
+// The span is the payload's. FitSpan in pkg/screen is the one floor; pkg/wiring
+// fails if a second one appears here.
 function spanFor(block: Block): number {
-  return Math.max(block.span ?? 1, MIN_SPAN[block.component] ?? 1)
+  return block.span ?? 1
 }
 
 
