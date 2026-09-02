@@ -58,3 +58,40 @@ func TestTextPadding(t *testing.T) {
 		}
 	})
 }
+
+// A page title or a TXT record is someone else's bytes. An escape sequence in
+// one must not reach a terminal or a model through the text form.
+func TestTextDropsControlCharacters(t *testing.T) {
+	p := Payload{
+		Command: "get",
+		Target:  "example.com",
+		Verdict: Verdict{
+			State:    "ok",
+			Headline: "\x1b]0;owned\x07title",
+		},
+		Blocks: []Block{
+			{
+				Component: "GraphSpec",
+				Props: SpecProps{
+					Title: "spec",
+					Rows: []SpecRow{
+						{Label: "value", Value: "\x1b[2Jclear\r"},
+					},
+				},
+			},
+		},
+	}
+
+	out := p.Text()
+
+	for _, bad := range []string{"\x1b", "\x07", "\r"} {
+		if strings.Contains(out, bad) {
+			t.Errorf("Text() kept control byte %q:\n%s", bad, out)
+		}
+	}
+	for _, want := range []string{"title", "clear", "\n"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("Text() dropped %q, want it kept:\n%s", want, out)
+		}
+	}
+}
