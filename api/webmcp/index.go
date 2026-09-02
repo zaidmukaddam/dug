@@ -10,12 +10,14 @@
 package handler
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"golang.org/x/sync/errgroup"
 
@@ -38,6 +40,10 @@ const (
 	// Bundles are routinely megabytes and httpx caps bodies at 256KB, which
 	// would cut the file off before the marker.
 	scriptBudget = 4 << 20
+
+	// Across every script, not per file: 24 files at 4MB each is 96MB of
+	// someone else's bundles, and the memory cap is the thing being protected.
+	scanBudget = 16 << 20
 )
 
 var webmcpSignals = []string{
@@ -109,7 +115,7 @@ func run(r *http.Request, result *screen.Result, name string) {
 	// nothing at all. Said on the screen, not just here.
 	marker := markerValue(body)
 
-	inHTML := mentions(body, apiMarkers)
+	inHTML := mentions(response.Body, apiMarkers)
 
 	scripts := scriptURLs(origin, body)
 	read, inScripts := scanScripts(ctx, result, scripts)
@@ -234,16 +240,18 @@ func scriptURLs(origin, body string) []string {
 // scanScripts reads up to maxScripts of them, several at a time, and reports
 // how many it got through so the screen can say what it did not look at.
 func scanScripts(ctx context.Context, result *screen.Result, scripts []string) (int, bool) {
-	read := scripts
-	if len(read) > maxScripts {
-		read = read[:maxScripts]
+	planned := scripts
+	if len(planned) > maxScripts {
+		planned = planned[:maxScripts]
 	}
-	result.Spend(len(read))
+	result.Spend(len(planned))
 
 	var (
-		mu   sync.Mutex
-		api  bool
-		wait sync.WaitGroup
+		mu    sync.Mutex
+		api   bool
+		wait  sync.WaitGroup
+		total atomic.Int64
+		read  atomic.Int64
 	)
 
 	queue := make(chan string)
@@ -252,11 +260,20 @@ func scanScripts(ctx context.Context, result *screen.Result, scripts []string) (
 		go func() {
 			defer wait.Done()
 			for src := range queue {
+				// The budget is shared across workers: once it's spent, the
+				// rest of the queue is left unfetched rather than read anyway.
+				if total.Load() > scanBudget {
+					continue
+				}
+				read.Add(1)
 				response := httpx.GetLimited(ctx, src, scriptBudget)
 				if response.Err != "" || len(response.Body) == 0 {
 					continue
 				}
-				if !mentions(string(response.Body), apiMarkers) {
+				if total.Add(int64(len(response.Body))) > scanBudget {
+					continue
+				}
+				if !mentions(response.Body, apiMarkers) {
 					continue
 				}
 				mu.Lock()
@@ -266,13 +283,13 @@ func scanScripts(ctx context.Context, result *screen.Result, scripts []string) (
 		}()
 	}
 
-	for _, src := range read {
+	for _, src := range planned {
 		queue <- src
 	}
 	close(queue)
 	wait.Wait()
 
-	return len(read), api
+	return int(read.Load()), api
 }
 
 type mcpProbe struct {
@@ -299,9 +316,9 @@ func probeMCP(ctx context.Context, origin string) mcpProbe {
 	}
 }
 
-func mentions(body string, markers []string) bool {
+func mentions(body []byte, markers []string) bool {
 	for _, marker := range markers {
-		if strings.Contains(body, marker) {
+		if bytes.Contains(body, []byte(marker)) {
 			return true
 		}
 	}

@@ -79,7 +79,7 @@ func Fetch(ctx context.Context, rawURL string) *Page {
 		return page
 	}
 
-	root, err := html.Parse(strings.NewReader(string(response.Body)))
+	root, err := html.Parse(bytes.NewReader(response.Body))
 	if err != nil {
 		page.Err = "unparseable html"
 		return page
