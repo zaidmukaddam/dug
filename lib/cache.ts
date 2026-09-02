@@ -25,6 +25,14 @@ export type Verdict = {
   detail: string
 }
 
+// Present only on a 4xx, mirroring ErrorInfo in pkg/screen. Its presence is
+// what tells the client an envelope is a refusal rather than an answer.
+export type PayloadError = {
+  code: string
+  message: string
+  hint?: string
+}
+
 export type Payload = {
   command: string
   target: string
@@ -36,6 +44,7 @@ export type Payload = {
   notes: string[]
   degraded: Degraded[]
   blocks: Block[]
+  error?: PayloadError
 }
 
 export type CacheState = {
