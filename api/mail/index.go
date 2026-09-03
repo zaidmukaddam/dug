@@ -93,18 +93,22 @@ func runMail(r *http.Request, result *screen.Result, name string) {
 		result.SetVerdict("warn", name+" is only partly protected", detail)
 	}
 
+	// One row, because five rows of one or two nodes each is a list, not a
+	// flow. Only the outcome carries the accent: with every node lit nothing
+	// was the point. A step that failed is muted, so the break in the chain
+	// is visible without reading it.
+	//
+	// The lookup count and the alignment are not steps in the row: the row
+	// does not wrap on a desktop, seven nodes ran past the frame at 1440px,
+	// and both have a frame of their own further down.
 	result.Add("GraphFlow", screen.FlowProps{Title: "authentication", Rows: []screen.FlowRow{
-		{Nodes: []screen.FlowNode{{Label: mxLabel(hasMX, len(mx.Records)), Tone: tone(hasMX), Stretch: true}}},
 		{Nodes: []screen.FlowNode{
-			{Label: labelOr(hasSPF, "spf", "no spf"), Tone: tone(hasSPF)},
-			{Label: dkimLabel(hasDKIM, len(selectors)), Tone: tone(hasDKIM)},
+			{Label: mxLabel(hasMX, len(mx.Records)), Tone: stepTone(hasMX)},
+			{Label: labelOr(hasSPF, "spf", "no spf"), Tone: stepTone(hasSPF)},
+			{Label: dkimLabel(hasDKIM, len(selectors)), Tone: stepTone(hasDKIM)},
+			{Label: dmarcLabel(hasDMARC, policy), Tone: stepTone(hasDMARC)},
+			{Label: enforcedLabel(enforcing, hasDMARC), Tone: tone(enforcing), Stretch: true},
 		}},
-		{Nodes: []screen.FlowNode{
-			{Label: lookupLabel(hasSPF, walk.Lookups), Tone: tone(withinLimit && hasSPF)},
-			{Label: dmarcLabel(hasDMARC, policy), Tone: tone(hasDMARC)},
-		}},
-		{Nodes: []screen.FlowNode{{Label: alignmentLabel(hasDMARC, aspf, adkim), Tone: tone(hasDMARC), Stretch: true}}},
-		{Nodes: []screen.FlowNode{{Label: enforcedLabel(enforcing, hasDMARC), Tone: tone(enforcing), Stretch: true}}},
 	}}, 2)
 
 	result.Add("GraphCheck", screen.CheckProps{Title: "punch list", Items: []screen.CheckItem{
@@ -263,7 +267,8 @@ func runSPF(r *http.Request, result *screen.Result, name string) {
 		termRows = append(termRows, []string{term.Qualifier, term.Mechanism, value, lookup})
 	}
 	result.Add("GraphTable", screen.TableProps{
-		Title: "mechanisms", Headers: []string{"qualifier", "mechanism", "value", "lookup"}, Rows: termRows,
+		Title: "mechanisms", Headers: []string{"qualifier", "mechanism", "value", "lookup"},
+		Align: []string{"left", "left", "left", "left"}, Rows: termRows,
 	}, 2)
 
 	withinText := "yes"
@@ -295,6 +300,15 @@ func toTree(node mailx.Node) screen.TreeNode {
 func tone(ok bool) string {
 	if ok {
 		return "accent"
+	}
+	return "muted"
+}
+
+// A step along the way reads in the default ink when it passed, so the
+// accent is left for the outcome.
+func stepTone(ok bool) string {
+	if ok {
+		return "default"
 	}
 	return "muted"
 }

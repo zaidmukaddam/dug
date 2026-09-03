@@ -141,6 +141,7 @@ func run(r *http.Request, result *screen.Result) {
 	result.Add("GraphSheet", screen.SheetProps{
 		Title:   "policy",
 		Headers: []string{"setting", "value"},
+		Align:   []string{"left", "left"},
 		Sections: []screen.SheetSection{
 			{Title: "cache ceilings", Rows: [][]string{
 				{"dns", "1h"}, {"rdap", "6h"}, {"tls", "1h"},
@@ -165,14 +166,9 @@ func run(r *http.Request, result *screen.Result) {
 		denyRows = append(denyRows, []string{entry[0], entry[1]})
 	}
 	result.Add("GraphTable", screen.TableProps{
-		Title: "explicit denylist", Headers: []string{"range", "reason"}, Rows: denyRows,
+		Title: "explicit denylist", Headers: []string{"range", "reason"},
+		Align: []string{"left", "left"}, Rows: denyRows,
 	}, 3)
-
-	now := time.Now().UnixMilli()
-	result.Add("GraphTimer", screen.TimerProps{
-		Title: "checked", Kind: "ago", At: &now,
-		Caption: fmt.Sprintf("%d resolvers probed", len(answers)),
-	}, 1)
 
 	result.Note("egress addresses on vercel are shared and rotating, so an upstream may rate limit this deployment for reasons that have nothing to do with it. that’s why every screen carries a degraded state, not an error.")
 	result.Note("the guard runs in net.Dialer.Control, which fires after resolution and before connect, so there’s no window between the check and the connection for a second dns answer.")

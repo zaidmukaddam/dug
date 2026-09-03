@@ -98,6 +98,7 @@ func runRDAP(r *http.Request, result *screen.Result, name string) {
 	result.Add("GraphSheet", screen.SheetProps{
 		Title:   "registration",
 		Headers: []string{"field", "value"},
+		Align:   []string{"left", "left"},
 		Sections: []screen.SheetSection{
 			{Title: "registry", Rows: [][]string{
 				{"name", orNot(record.Name, name)},

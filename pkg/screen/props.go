@@ -68,6 +68,10 @@ type SheetProps struct {
 	Title    string         `json:"title"`
 	Headers  []string       `json:"headers"`
 	Sections []SheetSection `json:"sections"`
+	// The frontend right-aligns every column after the first unless told
+	// otherwise, which lines numbers up and strands text at the far edge of
+	// a wide frame. Every sheet here is a field beside a text value.
+	Align []string `json:"align,omitempty"`
 }
 
 type StatItem struct {

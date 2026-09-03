@@ -227,6 +227,30 @@ figure {
     overflow-wrap: break-word;
 }
 
+/* The last cell of a table row is the exception, and it needs `anywhere`.
+   `break-word` leaves a token's full width in the column's min-content, and
+   table layout will not shrink a column below that, so one 400-character
+   cookie or dnskey blob made the whole value column that wide. The table then
+   scrolled, and with values right-aligned every one of them sat off screen
+   and read as blank.
+
+   Only the last column, because `anywhere` on every cell collapses every
+   column's min-content to one character, and the browser then hands all the
+   width to the column with the longest content: the label column wrapped
+   "strict-transport-security" one syllable per line and "86400" as "8640"
+   over "0". The value column is always last here, and the columns before it
+   keep their longest token as their floor. */
+.graph-scroll-x td:last-child {
+    overflow-wrap: anywhere;
+}
+
+/* Frame titles were accent on every frame, so the labels outshone the content
+   and the verdict glyph had nothing left to stand out against. The vendored
+   title span carries this hook class for exactly this override. */
+.graph-title-ink {
+    color: var(--graph-muted);
+}
+
 /* Spec rows are a label track beside a value track. The label track is
    declared `minmax(7rem, 11rem)` next to `minmax(0, 1fr)`, and because the
    value track may shrink to zero the label greedily takes its 11rem maximum.

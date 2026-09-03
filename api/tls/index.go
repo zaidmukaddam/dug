@@ -4,7 +4,6 @@ package handler
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/zaidmukaddam/dug/pkg/certs"
@@ -183,13 +182,10 @@ func run(r *http.Request, result *screen.Result, name string) {
 	if len(sections) == 0 {
 		sections = []screen.SheetSection{{Title: "chain", Rows: [][]string{{"result", "no chain returned"}}}}
 	}
-	result.Add("GraphSheet", screen.SheetProps{Title: "chain", Headers: []string{"field", "value"}, Sections: sections}, 3)
-
-	now2 := time.Now().UnixMilli()
-	result.Add("GraphTimer", screen.TimerProps{
-		Title: "measured", Kind: "ago", At: &now2,
-		Caption: strconv.Itoa(handshake.MS) + "ms to " + handshake.IP,
-	}, 1)
+	result.Add("GraphSheet", screen.SheetProps{
+		Title: "chain", Headers: []string{"field", "value"},
+		Align: []string{"left", "left"}, Sections: sections,
+	}, 3)
 
 	if leaf != nil {
 		rows := make([][]string, 0, len(leaf.SANs))

@@ -237,7 +237,8 @@ func runIP(r *http.Request, result *screen.Result, target string) {
 		peerRows = [][]string{{"-", "no peer data published for this prefix"}}
 	}
 	result.Add("GraphTable", screen.TableProps{
-		Title: "neighbours", Headers: []string{"asn", "name"}, Rows: peerRows,
+		Title: "neighbours", Headers: []string{"asn", "name"},
+		Align: []string{"left", "left"}, Rows: peerRows,
 	}, 2)
 
 	if len(ptr.Records) == 0 {
@@ -411,7 +412,8 @@ func runNet(r *http.Request, result *screen.Result, target string) {
 		namedRows = [][]string{{"-", "no address in this range has reverse dns"}}
 	}
 	result.Add("GraphTable", screen.TableProps{
-		Title: "named addresses", Headers: []string{"address", "name"}, Rows: namedRows,
+		Title: "named addresses", Headers: []string{"address", "name"},
+		Align: []string{"left", "left"}, Rows: namedRows,
 	}, 2)
 
 	result.Note("a filled cell means the address has reverse dns, not that it is live. nothing in this range was contacted. establishing liveness means connecting to 256 third-party addresses from shared egress, which is the probe laundering this tool is built not to do.")

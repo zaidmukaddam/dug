@@ -7,7 +7,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/zaidmukaddam/dug/pkg/dnsx"
 	"github.com/zaidmukaddam/dug/pkg/resolvers"
@@ -128,14 +127,6 @@ func runDig(r *http.Request, result *screen.Result, name string, resolver resolv
 		screen.SpecRow{Label: "types asked", Value: join(types)},
 	)
 	result.Add("GraphSpec", screen.SpecProps{Title: "query", Rows: rows}, 1)
-
-	now := time.Now().UnixMilli()
-	result.Add("GraphTimer", screen.TimerProps{
-		Title:   "answered",
-		Kind:    "ago",
-		At:      &now,
-		Caption: fmt.Sprintf("%dms slowest of %d lookups", slowest, len(answers)),
-	}, 1)
 
 	if unicodeForm != asciiForm {
 		result.Note("the name was typed as " + unicodeForm + " and sent as " + asciiForm +

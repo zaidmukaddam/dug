@@ -11,7 +11,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/zaidmukaddam/dug/pkg/dnsx"
 	"github.com/zaidmukaddam/dug/pkg/httpx"
@@ -170,7 +169,10 @@ func runHTTP(r *http.Request, result *screen.Result, name string) {
 		}
 		sections = append(sections, screen.SheetSection{Title: "other", Rows: rows})
 	}
-	result.Add("GraphSheet", screen.SheetProps{Title: "headers", Headers: []string{"header", "value"}, Sections: sections}, 3)
+	result.Add("GraphSheet", screen.SheetProps{
+		Title: "headers", Headers: []string{"header", "value"},
+		Align: []string{"left", "left"}, Sections: sections,
+	}, 3)
 
 	maxAge := 0
 	if hsts := response.Header("Strict-Transport-Security"); strings.Contains(hsts, "max-age=") {
@@ -187,12 +189,6 @@ func runHTTP(r *http.Request, result *screen.Result, name string) {
 	result.Add("GraphBullet", screen.BulletProps{Title: "hsts max-age", Items: []screen.BulletItem{
 		{Label: "against one year", Value: maxAge, Target: 31536000, Max: maxInt(31536000, maxAge), Display: display},
 	}}, 1)
-
-	now := time.Now().UnixMilli()
-	result.Add("GraphTimer", screen.TimerProps{
-		Title: "round trip", Kind: "ago", At: &now,
-		Caption: fmt.Sprintf("%dms including %d redirects", response.Timing.TotalM, redirects),
-	}, 1)
 
 	if redirects > 0 {
 		result.Note(fmt.Sprintf(
@@ -278,12 +274,6 @@ func runTrace(r *http.Request, result *screen.Result, name string) {
 		Title: "hops", Headers: []string{"url", "status", "address", "ms"},
 		Align: []string{"left", "right", "left", "right"}, Rows: rows,
 	}, 2)
-
-	now := time.Now().UnixMilli()
-	result.Add("GraphTimer", screen.TimerProps{
-		Title: "measured", Kind: "ago", At: &now,
-		Caption: strconv.Itoa(timing.TotalM) + "ms total",
-	}, 1)
 
 	result.Note("these are http request timings, not network hops. ROUTE walks the path hop by hop with icmp.")
 	result.Note("measured once, from one region, to one endpoint. this isn’t a global latency figure and a single sample isn’t a distribution.")

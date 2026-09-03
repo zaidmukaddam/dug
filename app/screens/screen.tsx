@@ -110,16 +110,26 @@ function withInstant(block: Block, ts: number): Block {
   return block
 }
 
+// How many columns the grid has. Spans are chosen per block by the width its
+// content needs, never by how a row packs, so a screen whose every block spans
+// two left the third column empty from the first frame to the last. With no
+// one-column block to backfill it, the grid is two wide and a span of three
+// simply fills the row.
+function columnsFor(payload: Payload): 2 | 3 {
+  return payload.blocks.some((block) => spanFor(block) === 1) ? 3 : 2
+}
+
 // The clock in Screen ticks once a second for the badge. Without this the tick
 // re-rendered every graph on the page, and a case file has four screens of
 // them. The payload reference only changes when a new answer arrives.
 const Blocks = memo(function Blocks({ payload }: { payload: Payload }) {
+  const columns = columnsFor(payload)
   return (
     <>
       {payload.blocks.map((block, index) => (
         <div
           key={`${block.component}-${index}`}
-          className={cn("min-w-0", SPAN_CLASS[spanFor(block)] ?? SPAN_CLASS[1])}
+          className={cn("min-w-0", SPAN_CLASS[Math.min(spanFor(block), columns)])}
         >
           <BlockFrame block={withInstant(block, payload.ts)} />
         </div>
@@ -143,20 +153,18 @@ export function Screen({ payload }: { payload: Payload }) {
           leaves. DOM order, and so reading order, is unchanged.
           `items-start` because grid items otherwise stretch to the tallest in
           their row, which left short frames like the countdown carrying two
-          hundred pixels of empty space. */}
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-flow-dense lg:grid-cols-3">
-        <Blocks payload={payload} />
+          hundred pixels of empty space.
 
-        {/* Live answers read 100% here, so the badge covers those instead. */}
-        {state.cached ? (
-          <div className="min-w-0 lg:col-span-1">
-            <GraphMeter
-              title="cache"
-              value={state.remaining}
-              caption={`${formatAge(state.ageMs)}, ${Math.round(state.remaining * payload.ttl)}s of ${payload.ttl}s left`}
-            />
-          </div>
-        ) : null}
+          No cache meter down here: the badge in the verdict line already says
+          how old the answer is, and a frame about this tool's own cache sat
+          beside the evidence as if it were a finding about the domain. */}
+      <div
+        className={cn(
+          "grid grid-cols-1 items-start gap-6 lg:grid-flow-dense",
+          columnsFor(payload) === 3 ? "lg:grid-cols-3" : "lg:grid-cols-2"
+        )}
+      >
+        <Blocks payload={payload} />
       </div>
 
       {/* Provenance and limits, folded. Every screen ends with two or three of

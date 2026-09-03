@@ -22,7 +22,7 @@ export function Frame({
   return (
     <figure className={cn("graph-frame relative min-w-0 font-mono text-sm", className)}>
       <figcaption className="absolute top-0 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 bg-background px-2.5 tracking-wide whitespace-nowrap uppercase">
-        <span className="text-graph-accent">[ {title} ]</span>
+        <span className="text-graph-muted">[ {title} ]</span>
       </figcaption>
 
       <span aria-hidden="true" className={cn(corner, "top-0 left-0 -translate-x-1/2 -translate-y-1/2")}>

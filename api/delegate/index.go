@@ -7,7 +7,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/zaidmukaddam/dug/pkg/dnsx"
 	"github.com/zaidmukaddam/dug/pkg/resolvers"
@@ -156,12 +155,6 @@ func runNS(r *http.Request, result *screen.Result, name string) {
 		Title: "walk", Headers: []string{"zone", "asked", "kind", "ms"},
 		Align: []string{"left", "left", "left", "right"}, Rows: walkRows,
 	}, 2)
-
-	now := time.Now().UnixMilli()
-	result.Add("GraphTimer", screen.TimerProps{
-		Title: "walk time", Kind: "ago", At: &now,
-		Caption: fmt.Sprintf("%dms across %d levels", totalMS, len(hops)),
-	}, 1)
 
 	if !consistent && len(parentSet) > 0 && len(resolverSet) > 0 {
 		result.Note("the parent delegation and the resolver answer name different nameservers. during a nameserver change that resolves on its own; otherwise it’s a real inconsistency.")

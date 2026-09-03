@@ -232,7 +232,7 @@ export function Palette({
             {agentTools > 0 ? (
               <>
                 {" · "}
-                <span className="text-graph-accent">
+                <span>
                   <span className="tabular-nums">{agentTools}</span> tools available to an agent in
                   this page
                 </span>
