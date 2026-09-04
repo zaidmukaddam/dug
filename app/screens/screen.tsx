@@ -28,7 +28,6 @@ import { GraphSpec } from "@/components/graph-spec"
 import { GraphStat } from "@/components/graph-stat"
 import { GraphTable } from "@/components/graph-table"
 import { GraphTimeline } from "@/components/graph-timeline"
-import { GraphTimer } from "@/components/graph-timer"
 import { GraphTree } from "@/components/graph-tree"
 import { GraphUptime } from "@/components/graph-uptime"
 import { GraphWaffle } from "@/components/graph-waffle"
@@ -63,7 +62,6 @@ const REGISTRY = {
   GraphStat,
   GraphTable,
   GraphTimeline,
-  GraphTimer,
   GraphTree,
   GraphUptime,
   GraphWaffle,
@@ -101,15 +99,6 @@ function BlockFrame({ block }: { block: Block }) {
   return <Component {...block.props} />
 }
 
-function withInstant(block: Block, ts: number): Block {
-  if (block.props.at === null || block.props.at === undefined) {
-    if (block.component === "GraphTimer") {
-      return { ...block, props: { ...block.props, at: ts } }
-    }
-  }
-  return block
-}
-
 // How many columns the grid has. Spans are chosen per block by the width its
 // content needs, never by how a row packs, so a screen whose every block spans
 // two left the third column empty from the first frame to the last. With no
@@ -131,7 +120,7 @@ const Blocks = memo(function Blocks({ payload }: { payload: Payload }) {
           key={`${block.component}-${index}`}
           className={cn("min-w-0", SPAN_CLASS[Math.min(spanFor(block), columns)])}
         >
-          <BlockFrame block={withInstant(block, payload.ts)} />
+          <BlockFrame block={block} />
         </div>
       ))}
     </>

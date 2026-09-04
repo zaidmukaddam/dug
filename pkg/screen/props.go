@@ -313,13 +313,6 @@ type CellsProps struct {
 	Items []CellGrid `json:"items"`
 }
 
-type TimerProps struct {
-	Title   string `json:"title"`
-	Kind    string `json:"kind,omitempty"`
-	At      *int64 `json:"at"`
-	Caption string `json:"caption,omitempty"`
-}
-
 type CountdownProps struct {
 	Title   string `json:"title"`
 	To      string `json:"to"`

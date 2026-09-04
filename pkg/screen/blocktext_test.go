@@ -142,13 +142,6 @@ func TestBlockText(t *testing.T) {
 			}}},
 		},
 		{
-			// TimerProps renders only its caption; an empty caption is itself an
-			// explicit empty case in blockText, so the field under test here is
-			// Caption, not Kind or At.
-			name:  "TimerProps",
-			block: Block{Component: "GraphTimer", Props: TimerProps{Title: "timer", Caption: "elapsed"}},
-		},
-		{
 			name:  "CountdownProps",
 			block: Block{Component: "GraphCountdown", Props: CountdownProps{Title: "countdown", To: "2025-01-01"}},
 		},

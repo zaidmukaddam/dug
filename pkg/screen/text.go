@@ -322,12 +322,6 @@ func blockText(block Block) string {
 		}
 		return tableText([]string{}, rows)
 
-	case TimerProps:
-		if p.Caption == "" {
-			return ""
-		}
-		return fmt.Sprintf("%s%s\n", indent, p.Caption)
-
 	case CountdownProps:
 		line := p.To
 		if p.Caption != "" {
