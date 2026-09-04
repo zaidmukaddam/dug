@@ -182,10 +182,7 @@ func run(r *http.Request, result *screen.Result, name string) {
 	if len(sections) == 0 {
 		sections = []screen.SheetSection{{Title: "chain", Rows: [][]string{{"result", "no chain returned"}}}}
 	}
-	result.Add("GraphSheet", screen.SheetProps{
-		Title: "chain", Headers: []string{"field", "value"},
-		Align: []string{"left", "left"}, Sections: sections,
-	}, 3)
+	result.Add("GraphSheet", screen.SheetProps{Title: "chain", Headers: []string{"field", "value"}, Sections: sections}, 3)
 
 	if leaf != nil {
 		rows := make([][]string, 0, len(leaf.SANs))

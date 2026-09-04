@@ -141,7 +141,6 @@ func run(r *http.Request, result *screen.Result) {
 	result.Add("GraphSheet", screen.SheetProps{
 		Title:   "policy",
 		Headers: []string{"setting", "value"},
-		Align:   []string{"left", "left"},
 		Sections: []screen.SheetSection{
 			{Title: "cache ceilings", Rows: [][]string{
 				{"dns", "1h"}, {"rdap", "6h"}, {"tls", "1h"},

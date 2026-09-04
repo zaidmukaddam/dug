@@ -80,6 +80,14 @@ function spanFor(block: Block): number {
   return block.span ?? 1
 }
 
+// What a component gets unless the payload says otherwise. The vendored sheet
+// right-aligns every column after the first, which lines numbers up and
+// strands text at the far edge of a wide frame, and every sheet is a field
+// beside a text value. Said once here rather than by every handler that emits
+// one.
+const DEFAULTS: Record<string, Record<string, unknown>> = {
+  GraphSheet: { align: ["left", "left"] },
+}
 
 function BlockFrame({ block }: { block: Block }) {
   const Component = REGISTRY[block.component]
@@ -96,7 +104,7 @@ function BlockFrame({ block }: { block: Block }) {
     )
   }
 
-  return <Component {...block.props} />
+  return <Component {...DEFAULTS[block.component]} {...block.props} />
 }
 
 // How many columns the grid has. Spans are chosen per block by the width its

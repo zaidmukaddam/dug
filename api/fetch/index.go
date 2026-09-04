@@ -169,10 +169,7 @@ func runHTTP(r *http.Request, result *screen.Result, name string) {
 		}
 		sections = append(sections, screen.SheetSection{Title: "other", Rows: rows})
 	}
-	result.Add("GraphSheet", screen.SheetProps{
-		Title: "headers", Headers: []string{"header", "value"},
-		Align: []string{"left", "left"}, Sections: sections,
-	}, 3)
+	result.Add("GraphSheet", screen.SheetProps{Title: "headers", Headers: []string{"header", "value"}, Sections: sections}, 3)
 
 	maxAge := 0
 	if hsts := response.Header("Strict-Transport-Security"); strings.Contains(hsts, "max-age=") {
