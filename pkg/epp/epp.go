@@ -119,7 +119,6 @@ func CheckItems(codes []string) []CheckItem {
 	return items
 }
 
-// LockedCount reports how many codes bar a change.
 func LockedCount(codes []string) int {
 	locked := 0
 	for _, code := range codes {

@@ -136,7 +136,6 @@ func reason(addr netip.Addr) string {
 	return ""
 }
 
-// Check validates one address.
 func Check(addr netip.Addr) error {
 	if why := reason(addr); why != "" {
 		return &Blocked{Target: addr.String(), Reason: why}
@@ -144,7 +143,6 @@ func Check(addr netip.Addr) error {
 	return nil
 }
 
-// CheckString validates an address in text form.
 func CheckString(value string) (netip.Addr, error) {
 	addr, err := netip.ParseAddr(value)
 	if err != nil {
