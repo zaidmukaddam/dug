@@ -60,7 +60,7 @@ function system(): string {
   ).join("\n")
 
   const examples = INVESTIGATIONS.map(
-    (entry) => `"${entry.question}" -> ${JSON.stringify(entry.steps("{target}"))}`
+    (entry) => `"${entry.question}" -> ${JSON.stringify(entry.steps)}`
   ).join("\n")
 
   return [

@@ -27,7 +27,7 @@ import { useEffectEvent, useState } from "react"
 import { COMMANDS } from "@/app/commands/grammar"
 import { useMountEffect } from "@/hooks/use-mount-effect"
 import type { Payload } from "@/lib/cache"
-import { expandSteps, INVESTIGATIONS } from "@/lib/investigations"
+import { INVESTIGATIONS } from "@/lib/investigations"
 
 type ToolDescriptor = {
   name: string
@@ -158,6 +158,14 @@ function describe(payload: Payload): string {
   return lines.join("\n")
 }
 
+// A model may hand a list back as an array or, less often, as a newline or
+// comma separated string. Both are obviously meant.
+function list(raw: unknown): string[] {
+  return (Array.isArray(raw) ? raw : String(raw ?? "").split(/[\n,]/))
+    .map((item) => String(item).trim())
+    .filter(Boolean)
+}
+
 // A worked example for the tool description, taken from the landing's own
 // presets so the two cannot describe different grammars.
 function example(id: string): string {
@@ -165,7 +173,7 @@ function example(id: string): string {
   if (!investigation) {
     return ""
   }
-  return `"${investigation.question}" with steps ${JSON.stringify(investigation.steps("example.com"))}`
+  return `"${investigation.question}" with steps ${JSON.stringify(investigation.steps)}`
 }
 
 // What the page is allowed to say about the tools it put up.
@@ -182,7 +190,7 @@ export function useWebMcp(
     question: string,
     targets: string[],
     steps: string[]
-  ) => Promise<{ command: string; payload: Payload }[]>
+  ) => Promise<{ planned: string[]; found: { command: string; payload: Payload }[] }>
 ): WebMcpStatus {
   // Tools are registered once for the life of the page, so a tool invoked ten
   // minutes later must reach the current run rather than the one that happened
@@ -276,14 +284,14 @@ export function useWebMcp(
       name: "dug_investigate",
       description:
         "Answer a question that takes more than one lookup, and build the case on the page " +
-        "while you do. You choose the commands and the order: this is your plan, not a preset, " +
-        "and a step written with {target} runs once per target when targets has more than one. " +
+        "while you do. You choose the commands and the order: this is your plan, not a preset. " +
         "Each screen is left on the page, in sequence, under the question that produced it, " +
         "so the person watching ends up with the evidence, not your summary of it. " +
         "Prefer this over calling the single-command tools yourself whenever the person has " +
         "described a symptom instead of naming a lookup, and whenever one answer won’t " +
-        "settle it. Steps use the same grammar as the other tools: a command name, a target, " +
-        "and an optional second argument. For example " +
+        "settle it. Steps use the same grammar as the other tools: a command name, {target} " +
+        "where the domain goes, and an optional second argument; each step runs once per " +
+        "target, in order. For example " +
         example("mail") +
         ", or " +
         example("dns") +
@@ -298,47 +306,31 @@ export function useWebMcp(
               "The question being answered, in the words the person would use. It becomes " +
               "the heading the evidence is filed under. Not a restatement of the commands.",
           },
-          target: {
-            type: "string",
-            description: "The one domain or host under investigation; use targets for more than one.",
-          },
           targets: {
             type: "array",
             items: { type: "string" },
             description:
-              "Several domains or hosts under one question. Write each step with {target} " +
-              "where the name goes and it runs once per target, in this order.",
+              "The domains or hosts under investigation, bare names, one entry when there is one. " +
+              "The steps run against each in this order.",
           },
           steps: {
             type: "array",
+            items: { type: "string" },
             description:
               "The commands to run, in order, each a full command line such as " +
-              '"MAIL example.com" or "DIG example.com MX". Three to five is usually right: ' +
+              '"MAIL {target}" or "DIG {target} MX". Three to five is usually right: ' +
               "enough to be conclusive, few enough to read.",
           },
         },
-        required: ["question", "steps"],
+        required: ["question", "targets", "steps"],
       },
       annotations: { readOnlyHint: true, untrustedContentHint: true },
       execute: async (input) => {
         const question = (input?.question ?? "").trim()
-        // A model may hand targets back as an array, or fall back to the
-        // single-target field. Both are obviously meant.
-        const rawTargets = input?.targets
-        const listed = (Array.isArray(rawTargets) ? rawTargets : [])
-          .map((target) => String(target).trim())
-          .filter(Boolean)
-        const target = (input?.target ?? "").trim()
-        const targets = listed.length > 0 ? listed : target ? [target] : []
+        const targets = list(input?.targets)
+        const steps = list(input?.steps)
 
-        // A model may hand steps back as an array or, less often, as a
-        // newline or comma separated string. Both are obviously meant.
-        const raw = input?.steps
-        const rawSteps = (Array.isArray(raw) ? raw : String(raw ?? "").split(/[\n,]/))
-          .map((step) => String(step).trim())
-          .filter(Boolean)
-
-        if (!question || targets.length === 0 || rawSteps.length === 0) {
+        if (!question || targets.length === 0 || steps.length === 0) {
           return {
             content: [
               {
@@ -350,9 +342,7 @@ export function useWebMcp(
           }
         }
 
-        const steps = expandSteps(rawSteps, targets)
-
-        const found = await investigateLatest(question, targets, steps)
+        const { planned, found } = await investigateLatest(question, targets, steps)
         if (found.length === 0) {
           return {
             content: [
@@ -366,7 +356,7 @@ export function useWebMcp(
         // answers than were asked for. A plan that half worked is a thing the
         // model needs to know about, and the person can already see the gap.
         const ran = new Set(found.map((step) => step.command))
-        const skipped = steps.filter((step) => !ran.has(step))
+        const skipped = planned.filter((step) => !ran.has(step))
 
         // The verdicts in order, so the model can reason about the case without
         // walking every block, and the payloads underneath so it can if it

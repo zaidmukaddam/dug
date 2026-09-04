@@ -255,7 +255,11 @@ export default function Page() {
   // lands, so the first is readable while the fourth is still in flight. That
   // is the reason this renders onto a page instead of returning a summary.
   const investigate = useCallback(
-    async (question: string, targets: string[], planned: string[], source: Source = "agent") => {
+    async (asked: string, targets: string[], steps: string[], source: Source = "agent") => {
+      // The case adds the question mark, so one an agent already wrote is
+      // dropped: "landing in spam??" was on screen for a whole demo take.
+      const question = asked.replace(/[?\s]+$/, "")
+      const planned = expandSteps(steps, targets)
       nextId.current += 1
       const caseId = nextId.current
       setEntries((current) => [
@@ -282,7 +286,7 @@ export default function Page() {
         )
         found.push({ command, payload: outcome.payload })
       }
-      return found
+      return { planned, found }
     },
     [pushInto]
   )
@@ -322,8 +326,7 @@ export default function Page() {
       if (why?.ok) {
         setInput("")
         setFailure(null)
-        const steps = why.targets.flatMap((target) => why.investigation.steps(target))
-        await investigate(why.investigation.question, why.targets, steps, "you")
+        await investigate(why.investigation.question, why.targets, why.investigation.steps, "you")
         return
       }
 
@@ -357,7 +360,7 @@ export default function Page() {
           setInput("")
           setInFlight((inFlight) => inFlight - 1)
           settled = true
-          await investigate(plan.question, plan.targets, expandSteps(plan.steps, plan.targets), "dug")
+          await investigate(plan.question, plan.targets, plan.steps, "dug")
         } finally {
           if (!settled) {
             setInFlight((inFlight) => inFlight - 1)
@@ -490,11 +493,11 @@ export default function Page() {
                 setInput(example)
                 focus()
               }}
-              onInvestigate={(investigation, target) => {
+              onInvestigate={(investigation) => {
                 void investigate(
                   investigation.question,
-                  [target],
-                  investigation.steps(target),
+                  [investigation.sample],
+                  investigation.steps,
                   "you"
                 )
               }}
@@ -565,20 +568,6 @@ function ScreenSkeleton() {
   )
 }
 
-// A domain each investigation has something real to say about, so the landing
-// demonstrates the feature rather than describing it. A person clicking one
-// gets the case run against this; an agent runs the same case against theirs,
-// which is the difference the tool exists to make.
-const SAMPLE: Record<string, string> = {
-  mail: "github.com",
-  dns: "cloudflare.com",
-  tls: "stripe.com",
-  reachability: "cloudflare.com",
-  agents: "vercel.com",
-  down: "github.com",
-  domain: "cloudflare.com",
-}
-
 // Built out of the same dashed frames an answer is, so the first thing on
 // screen is already an example of what the tool puts there.
 //
@@ -593,7 +582,7 @@ function Landing({
   onInvestigate,
 }: {
   onPick: (example: string) => void
-  onInvestigate: (investigation: Investigation, target: string) => void
+  onInvestigate: (investigation: Investigation) => void
 }) {
   const [hovered, setHovered] = useState<CommandSpec | null>(null)
   const families = Array.from(new Set(COMMANDS.map((spec) => spec.family)))
@@ -608,12 +597,11 @@ function Landing({
         <div className="flex flex-col gap-5">
           <div className="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
             {INVESTIGATIONS.map((investigation) => {
-              const target = SAMPLE[investigation.id]
               return (
                 <button
                   key={investigation.id}
                   type="button"
-                  onClick={() => onInvestigate(investigation, target)}
+                  onClick={() => onInvestigate(investigation)}
                   className="group -mx-1.5 flex min-w-0 flex-col gap-1 rounded px-1.5 py-1 text-left hover:bg-muted"
                 >
                   <span className="text-pretty text-foreground group-hover:text-graph-accent">
@@ -622,11 +610,9 @@ function Landing({
                   {/* The command that runs it, so clicking teaches the syntax
                       for running the same thing against your own domain. */}
                   <span className="truncate text-xs text-graph-muted">
-                    <span className="text-graph-accent">why {investigation.id}</span> {target} ·{" "}
-                    {investigation
-                      .steps(target)
-                      .map((step) => step.split(" ")[0].toLowerCase())
-                      .join(" ")}
+                    <span className="text-graph-accent">why {investigation.id}</span>{" "}
+                    {investigation.sample} ·{" "}
+                    {investigation.steps.map((step) => step.split(" ")[0].toLowerCase()).join(" ")}
                   </span>
                 </button>
               )

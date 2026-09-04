@@ -12,9 +12,15 @@ import type { ParseFailure } from "@/app/commands/grammar"
 export type Investigation = {
   id: string
   question: string
-  // In the order someone who knew what they were doing would run them. A case
-  // reads top to bottom.
-  steps: (target: string) => string[]
+  // A domain the investigation has something real to say about, so the landing
+  // demonstrates the feature rather than describing it. A person clicking one
+  // gets the case run against this; an agent runs the same case against theirs,
+  // which is the difference the tool exists to make.
+  sample: string
+  // In the order someone who knew what they were doing would run them, written
+  // with {target} where the domain goes, the same way an agent or the planner
+  // writes them. A case reads top to bottom.
+  steps: string[]
 }
 
 // `WHY <topic> <target> [, <target>...]` at the prompt, so a person can run one
@@ -52,12 +58,8 @@ export function matchInvestigation(text: string): InvestigationMatch | null {
     }
   }
 
-  const targets = rest
-    .join(" ")
-    .split(/[\s,]+/)
-    .map((target) => target.trim())
-    .filter(Boolean)
-  if (!targets.length) {
+  const targets = rest.join(" ").split(/[\s,]+/).filter(Boolean)
+  if (targets.length === 0) {
     return {
       ok: false,
       failure: {
@@ -86,36 +88,43 @@ export const INVESTIGATIONS: Investigation[] = [
   {
     id: "mail",
     question: "why is mail from this domain going to spam",
-    steps: (target) => [`MAIL ${target}`, `SPF ${target}`, `DIG ${target} MX`, `RDAP ${target}`],
+    sample: "github.com",
+    steps: ["MAIL {target}", "SPF {target}", "DIG {target} MX", "RDAP {target}"],
   },
   {
     id: "dns",
     question: "has my dns change taken effect",
-    steps: (target) => [`PROP ${target}`, `TTL ${target}`, `NS ${target}`, `DNSSEC ${target}`],
+    sample: "cloudflare.com",
+    steps: ["PROP {target}", "TTL {target}", "NS {target}", "DNSSEC {target}"],
   },
   {
     id: "tls",
     question: "is this site’s certificate and transport healthy",
-    steps: (target) => [`TLS ${target}`, `WATCH ${target}`, `HTTP ${target}`, `TRACE ${target}`],
+    sample: "stripe.com",
+    steps: ["TLS {target}", "WATCH {target}", "HTTP {target}", "TRACE {target}"],
   },
   {
     id: "reachability",
     question: "why is this host slow or unreachable",
-    steps: (target) => [`PING ${target}`, `ROUTE ${target}`, `TRACE ${target}`],
+    sample: "cloudflare.com",
+    steps: ["PING {target}", "ROUTE {target}", "TRACE {target}"],
   },
   {
     id: "agents",
     question: "can an agent read and understand this site",
-    steps: (target) => [`SEO ${target}`, `AEO ${target}`, `WEBMCP ${target}`, `OG ${target}`],
+    sample: "vercel.com",
+    steps: ["SEO {target}", "AEO {target}", "WEBMCP {target}", "OG {target}"],
   },
   {
     id: "down",
     question: "is this site down for everyone or only for me",
-    steps: (target) => [`HTTP ${target}`, `PING ${target}`, `TLS ${target}`, `PROP ${target}`],
+    sample: "github.com",
+    steps: ["HTTP {target}", "PING {target}", "TLS {target}", "PROP {target}"],
   },
   {
     id: "domain",
     question: "is this domain’s registration and delegation healthy",
-    steps: (target) => [`RDAP ${target}`, `NS ${target}`, `DNSSEC ${target}`, `TTL ${target}`],
+    sample: "cloudflare.com",
+    steps: ["RDAP {target}", "NS {target}", "DNSSEC {target}", "TTL {target}"],
   },
 ]

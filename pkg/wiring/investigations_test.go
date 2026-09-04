@@ -8,8 +8,8 @@ import (
 	"github.com/zaidmukaddam/dug/pkg/commands"
 )
 
-// An investigation is a list of command lines built by string interpolation and
-// never parsed until someone clicks it. A verb that does not exist, or one that
+// An investigation is a list of command lines written with a {target}
+// placeholder and never parsed until someone clicks it. A verb that does not exist, or one that
 // wants an ip address when the investigation hands it a domain, fails at the
 // point where a person is watching a case build — and it fails as one dead step
 // in the middle of four live ones, which reads as the target's problem rather
@@ -18,10 +18,7 @@ import (
 // Nothing else checks this. The Go registry has never heard of investigations
 // and the TypeScript compiler cannot tell a command name from any other string.
 
-var (
-	investigationID   = regexp.MustCompile(`id:\s*"([a-z]+)"`)
-	investigationStep = regexp.MustCompile("`([A-Z]+) \\$\\{target\\}([^`]*)`")
-)
+var investigationStep = regexp.MustCompile(`"([A-Z]+) \{target\}([^"]*)"`)
 
 // What a domain can be handed to. A domain is also a valid host and a valid
 // endpoint; it is not an address, an asn, a cidr or a pair.
@@ -57,28 +54,6 @@ func TestInvestigationStepsAreRealCommands(t *testing.T) {
 	}
 }
 
-// Every investigation needs a sample target on the landing, because that is the
-// only way a person without an agent can start one. A missing entry renders a
-// button that runs the case against the string "undefined".
-func TestEveryInvestigationHasALandingSample(t *testing.T) {
-	root := repoRoot(t)
-
-	ids := investigationID.FindAllStringSubmatch(read(t, root, "lib", "investigations.ts"), -1)
-	if len(ids) == 0 {
-		t.Fatal("no investigation ids found")
-	}
-
-	page := read(t, root, "app", "page.tsx")
-	samples := page[strings.Index(page, "const SAMPLE"):]
-	samples = samples[:strings.Index(samples, "}")]
-
-	for _, id := range ids {
-		if !strings.Contains(samples, id[1]+":") {
-			t.Errorf("investigation %q has no sample target, so its landing button investigates \"undefined\"", id[1])
-		}
-	}
-}
-
 // WHY is answered before parse() and is not in the command grammar, so nothing
 // in the grammar guards it. What it must not do is swallow input: a topic that
 // does not exist, or a topic with no target, has to fall through to the normal
@@ -101,7 +76,7 @@ func TestWhyFallsThroughWhenItIsNotAnInvestigation(t *testing.T) {
 	if got := strings.Count(fn, "return null"); got != 1 {
 		t.Errorf("matchInvestigation returns null %d times, want 1 — only a non-WHY verb falls through", got)
 	}
-	for _, guard := range []string{"!investigation", "!target"} {
+	for _, guard := range []string{"!investigation", "targets.length === 0"} {
 		if !strings.Contains(fn, guard) {
 			t.Errorf("matchInvestigation does not handle %s", guard)
 		}

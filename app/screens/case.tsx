@@ -45,11 +45,7 @@ export function CaseFile({
             </>
           ) : null}
         </p>
-        {/* The page adds the question mark, so one an agent already wrote is
-            dropped: "landing in spam??" was on screen for a whole demo take. */}
-        <h2 className="text-xl text-pretty text-foreground lowercase">
-          {question.replace(/[?\s]+$/, "")}?
-        </h2>
+        <h2 className="text-xl text-pretty text-foreground lowercase">{question}?</h2>
 
         {/* The plan, stated before it finishes. A person watching four lookups
             arrive one at a time should be able to see what is still coming,

@@ -237,13 +237,12 @@ evidence, not only the agent. Where the browser hasn’t shipped WebMCP a
 polyfill installs it, so the tools are there either way.
 
 It registers one tool that isn’t a command and has no counterpart here:
-dug_investigate. It takes a question, a target and a list of commands, runs them
-in order, and leaves every screen on the page under the question that produced
-them. The plan isn’t a preset and there’s no menu of investigations: the
-calling model writes the sequence out of the same grammar every other tool uses,
-which is the part a model is good at and a lookup table isn’t. For several
-domains pass targets and write each step with {target} where the name goes; it
-runs once per target, in order.
+dug_investigate. It takes a question, one or more targets and a list of
+commands written with {target} where the domain goes, runs them in order against
+each target, and leaves every screen on the page under the question that
+produced them. The plan isn’t a preset and there’s no menu of investigations:
+the calling model writes the sequence out of the same grammar every other tool
+uses, which is the part a model is good at and a lookup table isn’t.
 
 Reach for it when someone has described a symptom, not named a lookup: mail
 going to spam, a dns change that hasn’t taken effect, a host that’s slow. The
